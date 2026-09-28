@@ -38,6 +38,8 @@ Az első cél: egy **működő, egyszerű történelmi backtest**. Nem akarunk m
 
 ## Biztonság
 
+- A Git commitok szerzői e-mail címe a GitHub rejtett címe (`...+dorkanguyen@users.noreply.github.com`).
+  A felhasználó személyes e-mail címe ne kerüljön a Git történetébe (a repo később nyilvános lehet).
 - API kulcs, jelszó, secret SOHA nem kerülhet: Java kódba, CLAUDE.md-be, dokumentációba, Git commitba, GitHubra.
 - Secret kezelése: environment variable (pl. `DATABENTO_API_KEY`) vagy más biztonságos megoldás.
 
@@ -45,6 +47,8 @@ Az első cél: egy **működő, egyszerű történelmi backtest**. Nem akarunk m
 
 - **Fájlt módosítani, beállítást változtatni vagy kódot írni csak a felhasználó kifejezett beleegyezése után szabad.**
   Előbb elmondani, mit és miért, megvárni az igent, utána megcsinálni és egyszerűen elmagyarázni.
+- **Kivétel: a CLAUDE.md.** Ezt Claude magától, engedélykérés nélkül frissíti, de **utólag mindig leírja**, mit módosított.
+  (A CLAUDE.md commitolása továbbra is csak engedéllyel történik.)
 - Mindent úgy magyarázz, hogy egy kezdő is értse: egyszerű szavakkal, a szakszavakat is elmagyarázva.
 - A felhasználó **teljesen kezdő** programozásban és trading rendszerfejlesztésben. A cél a **megértés**, nem a gyorsaság. NE SIESS.
 - Ne írj meg egyszerre komplett alkalmazást; ne ugorj rögtön a komplex engine-re.
@@ -59,7 +63,7 @@ Az első cél: egy **működő, egyszerű történelmi backtest**. Nem akarunk m
 - Maven, Spring Boot, SQLite, Git: ne csak használd, hanem magyarázd el, miért és hogyan működik.
 - Git: minden használt parancsot röviden magyarázz el. **Ne commitolj és ne csinálj Git műveletet engedély nélkül.**
   Mindig mutasd meg előre, mit készülünk csinálni. Fontos állapotoknál javasolj commitot (pl. "Add first REST endpoint").
-- CLAUDE.md: fontos új döntésnél először szólj, hogy szerinted érdemes rögzíteni, majd frissítsd. Git-tel követjük.
+- CLAUDE.md: fontos új döntést magától rögzít, és utólag jelzi. Git-tel követjük.
 - Dokumentáció (`docs/architecture.md`, `docs/trading-concepts.md` stb.) csak akkor készül, amikor tényleg kell.
 
 ## Fejlesztési terv (módosítható)
@@ -88,11 +92,13 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 
 - A projekt egy üres IntelliJ Maven sablon: `pom.xml` (groupId `org.example`, Java 24), `src/main/java/org/example/Main.java` (Hello World).
 - Spring Boot még nincs a projektben.
-- Git repository létrehozva, a fő ág neve `main`.
-- `.gitignore` kiegészítve: `.env`, `*.db`, `*.sqlite`, `.idea/workspace.xml`.
+- **Phase 1 (Git rész) kész:** Git repository (`main` ág), `.gitignore` kiegészítve
+  (`.env`, `*.db`, `*.sqlite`, `.idea/workspace.xml`), első commit: „Initial project setup”.
+- GitHub: https://github.com/dorkanguyen/backtest – **privát**, később nyilvános lehet. Remote neve: `origin`.
+  A Git a `gh` CLI bejelentkezését használja (`gh auth setup-git`).
 - WSL-ben nincs telepítve Java/Maven (a fordítás IntelliJ-ből / Windowsról történik).
 
 ## Következő lépés
 
-- Phase 1: első commit („Initial project setup”) – a felhasználó futtatja.
-- Utána Phase 2: Spring Boot.
+- Phase 1 befejezése: a Maven és a `pom.xml` elmagyarázása (mi a Maven, dependency, build).
+- Utána Phase 2: Spring Boot (itt döntünk a Java verzióról: 24 marad vagy 21 LTS).

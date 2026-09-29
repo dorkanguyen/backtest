@@ -106,4 +106,19 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 ## Következő lépés
 
 - **Döntés (2026-09-29): Java 25 LTS** (a 24 már nem támogatott; a 25 telepítve van).
-- Phase 2: Spring Boot hozzáadása a projekthez (előtte commit a Java 25 átállásról).
+- Commit kész: „Switch to Java 25 LTS” (pusholva).
+- **Döntés (2026-09-29): a Spring Bootot kézzel adjuk hozzá a meglévő `pom.xml`-hez** (nem Spring Initializr-rel),
+  lépésenként: 1) `parent`, 2) `spring-boot-starter-webmvc` dependency (a régi `spring-boot-starter-web` a 4.x-ben elavult), 3) `spring-boot-maven-plugin`, 4) indító osztály.
+  Verzió: Spring Boot 4.1.1 (a legfrissebb stabil verzió 2026-09-29-én a Maven Centralon).
+- **Kész (2026-09-29):** `parent` blokk (a felhasználó maga írta be), Reload + `clean package` → BUILD SUCCESS.
+- **Kész (2026-09-29):** `spring-boot-starter-webmvc` dependency (a felhasználó írta be), Reload + `clean package` → BUILD SUCCESS.
+- IntelliJ tippek a felhasználónak: Reload = dupla `Shift` → „Reload All Maven Projects” (vagy `Ctrl+Shift+O` a `pom.xml`-ben),
+  mert az ikont nehezen találja. Ha a felhasználó a terminálból másol kódot, a Claude Code oldalsávjának szövege is
+  bekerülhet → a módosított fájlt mindig ellenőrizni kell.
+- **Kész (2026-09-29):** `spring-boot-maven-plugin` (Claude írta be). `clean package` → BUILD SUCCESS, a jar ~2 KB-ról
+  ~19,9 MB-ra nőtt (fat jar). A buildet Claude futtatta a felhasználó kérésére (Windows PowerShellből, az IntelliJ beépített
+  Mavenjével és az `openjdk-25.0.1` JDK-val), mert a felhasználónak sietnie kellett.
+- Commit: „Add Spring Boot parent, webmvc starter and Maven plugin” (pusholva).
+- **Phase 2 következő lépése (4/4): Spring Boot indító osztály** (`Main.java` helyett), majd `spring-boot:run`.
+  Folytatáskor röviden ismételd át a felhasználóval: mit csinál a plugin (fat jar, `spring-boot:run`), a Plugins mappa
+  a Maven ablakban; a felhasználó a jar-méret kísérletet és a Plugins mappa megnézését még nem csinálta meg maga.

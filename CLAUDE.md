@@ -119,6 +119,12 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   ~19,9 MB-ra nőtt (fat jar). A buildet Claude futtatta a felhasználó kérésére (Windows PowerShellből, az IntelliJ beépített
   Mavenjével és az `openjdk-25.0.1` JDK-val), mert a felhasználónak sietnie kellett.
 - Commit: „Add Spring Boot parent, webmvc starter and Maven plugin” (pusholva).
-- **Phase 2 következő lépése (4/4): Spring Boot indító osztály** (`Main.java` helyett), majd `spring-boot:run`.
+- **Kész (2026-09-29): Spring Boot indító osztály (4/4).** A felhasználó a `Main.java`-t IntelliJ Refactor → Rename-mel
+  átnevezte `BacktestApplication.java`-ra, és maga írta be a `@SpringBootApplication` + `SpringApplication.run` kódot.
+  (Tisztáztuk: a Git ág neve `main` és a Java osztály neve `Main` független egymástól.)
+- **Kész (2026-09-29): első indítás** (`spring-boot:run` a Maven ablak Plugins mappájából) sikeres, a felhasználó látta a
+  Whitelabel Error Page-et (404) a `http://localhost:8080` címen → a szerver fut. **Phase 2 Spring Boot alapjai készen.**
+- **Következő:** commit („Add Spring Boot application class”), majd az első REST endpoint.
+- (Régi jegyzet:) **Phase 2 lépése (4/4): Spring Boot indító osztály** (`Main.java` helyett), majd `spring-boot:run`.
   Folytatáskor röviden ismételd át a felhasználóval: mit csinál a plugin (fat jar, `spring-boot:run`), a Plugins mappa
   a Maven ablakban; a felhasználó a jar-méret kísérletet és a Plugins mappa megnézését még nem csinálta meg maga.

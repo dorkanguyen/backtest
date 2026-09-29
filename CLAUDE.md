@@ -90,15 +90,20 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 
 ## Aktuális állapot
 
-- A projekt egy üres IntelliJ Maven sablon: `pom.xml` (groupId `org.example`, Java 24), `src/main/java/org/example/Main.java` (Hello World).
+- A projekt egy üres IntelliJ Maven sablon: `pom.xml` (groupId `org.example`, eredetileg Java 24, most Java 25), `src/main/java/org/example/Main.java` (Hello World).
 - Spring Boot még nincs a projektben.
 - **Phase 1 (Git rész) kész:** Git repository (`main` ág), `.gitignore` kiegészítve
   (`.env`, `*.db`, `*.sqlite`, `.idea/workspace.xml`), első commit: „Initial project setup”.
 - GitHub: https://github.com/dorkanguyen/backtest – **privát**, később nyilvános lehet. Remote neve: `origin`.
   A Git a `gh` CLI bejelentkezését használja (`gh auth setup-git`).
 - WSL-ben nincs telepítve Java/Maven (a fordítás IntelliJ-ből / Windowsról történik).
+- **Phase 1 teljesen kész (2026-09-29):** Maven elmagyarázva (`pom.xml`, `target/` mappa, `clean`, `package`);
+  a felhasználó IntelliJ-ből sikeresen futtatta. A buildet az IntelliJ Maven ablakából (Lifecycle) indítja.
+- A Windows gépen telepített JDK-k: 1.8, Corretto 22, OpenJDK 24, OpenJDK 25 (`~/.jdks` és `Program Files/Java`).
+- **Java 25-re átállva (2026-09-29):** `pom.xml` (`maven.compiler.source/target` = 25) és IntelliJ Project SDK = `openjdk-25`.
+  `clean` + `package` Java 25-tel is BUILD SUCCESS.
 
 ## Következő lépés
 
-- Phase 1 befejezése: a Maven és a `pom.xml` elmagyarázása (mi a Maven, dependency, build).
-- Utána Phase 2: Spring Boot (itt döntünk a Java verzióról: 24 marad vagy 21 LTS).
+- **Döntés (2026-09-29): Java 25 LTS** (a 24 már nem támogatott; a 25 telepítve van).
+- Phase 2: Spring Boot hozzáadása a projekthez (előtte commit a Java 25 átállásról).

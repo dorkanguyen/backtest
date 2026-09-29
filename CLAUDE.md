@@ -129,7 +129,22 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   → „Hello, backtest!”), a felhasználó írta be, böngészőben kipróbálta. Elmagyarázva: HTTP request/response, GET/POST,
   package, component scan (a Spring csak a `BacktestApplication` package-ében és alatta keres).
 - Később rendbe teendő: a `HelloController.java` CRLF sorvégű (IntelliJ), a többi fájl LF → `.gitattributes` javaslat.
-- **Következő:** commit („Add first REST endpoint”), utána Phase 3 (SQLite).
+- Commit: „Add first REST endpoint” (pusholva). **Phase 2 kész.**
+- **Phase 3 (SQLite) elkezdve (2026-09-29):** fogalmak elmagyarázva egy `prices` tábla példáján (tábla, sor, oszlop,
+  primary key, auto increment, SQL `SELECT`, driver). A felhasználó jól válaszolt a primary key kérdésekre.
+- **Döntés (2026-09-29): JdbcTemplate** (`spring-boot-starter-jdbc` + `org.xerial:sqlite-jdbc`), NEM JPA/Hibernate.
+  Ok: tanuláshoz átlátható (mi írjuk az SQL-t), SQLite-tal gond nélkül megy, sok adatnál gyors. JPA esetleg később (PostgreSQL).
+  Mindkét dependency verzióját a Spring Boot 4.1.1 parent kezeli (sqlite-jdbc 3.53.2.1) → nem kell `<version>`.
+- **Kész (2026-09-29):** a két dependency a `pom.xml`-ben (a felhasználó írta be), Reload + `clean package` → BUILD SUCCESS,
+  a jar ~19,9 MB-ról ~33 MB-ra nőtt (az sqlite-jdbc sok operációs rendszer natív könyvtárát tartalmazza).
+- **Kész (2026-09-30):** `src/main/resources/application.properties` → `spring.datasource.url=jdbc:sqlite:backtest.db`
+  (a felhasználó hozta létre és adta a Githez). `spring-boot:run` hibátlanul indul. A `backtest.db` MÉG NEM jön létre,
+  és Hikari log sincs, mert a Spring csak az első valódi DB-használatkor kapcsolódik (ezt Claude előbb rosszul jósolta).
+- A felhasználó most tanulta meg, mi a log (Run ablak alul, `Alt+4`; INFO/WARN/ERROR), és hogyan kell olvasni.
+- **Következő:** commit („Add SQLite database configuration”), majd az első tábla létrehozása (pl. `schema.sql`;
+  nem beágyazott DB-nél kell hozzá `spring.sql.init.mode=always`).
+- (Régi jegyzet:) `application.properties` (a `resources` mappa már létezik, üresen – az IntelliJ sablon hozta létre; a Git üres mappát nem követ, ezért nem látszott)
+  (`spring.datasource.url`) – enélkül a `spring-boot:run` „Failed to configure a DataSource” hibával leáll.
 - (Régi jegyzet:) **Phase 2 lépése (4/4): Spring Boot indító osztály** (`Main.java` helyett), majd `spring-boot:run`.
   Folytatáskor röviden ismételd át a felhasználóval: mit csinál a plugin (fat jar, `spring-boot:run`), a Plugins mappa
   a Maven ablakban; a felhasználó a jar-méret kísérletet és a Plugins mappa megnézését még nem csinálta meg maga.

@@ -114,7 +114,9 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 - **Kész (2026-09-29):** `spring-boot-starter-webmvc` dependency (a felhasználó írta be), Reload + `clean package` → BUILD SUCCESS.
 - IntelliJ tippek a felhasználónak: Reload = dupla `Shift` → „Reload All Maven Projects” (vagy `Ctrl+Shift+O` a `pom.xml`-ben),
   mert az ikont nehezen találja. Ha a felhasználó a terminálból másol kódot, a Claude Code oldalsávjának szövege is
-  bekerülhet → a módosított fájlt mindig ellenőrizni kell.
+  bekerülhet → a módosított fájlt mindig ellenőrizni kell. **A sorvégi szóközöket is** (pl. `od -c`/`cat -A` sor
+  közepén; fájl végén a `cat -A` nem mutatja!): 2026-09-30-án egy `always ` (szóközzel) érték miatt nem indult a Spring
+  („No enum constant ...DatabaseInitializationMode.ALWAYS ”) – a `.properties` fájl a sorvégi szóközt az érték részének veszi.
 - **Kész (2026-09-29):** `spring-boot-maven-plugin` (Claude írta be). `clean package` → BUILD SUCCESS, a jar ~2 KB-ról
   ~19,9 MB-ra nőtt (fat jar). A buildet Claude futtatta a felhasználó kérésére (Windows PowerShellből, az IntelliJ beépített
   Mavenjével és az `openjdk-25.0.1` JDK-val), mert a felhasználónak sietnie kellett.
@@ -141,7 +143,19 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   (a felhasználó hozta létre és adta a Githez). `spring-boot:run` hibátlanul indul. A `backtest.db` MÉG NEM jön létre,
   és Hikari log sincs, mert a Spring csak az első valódi DB-használatkor kapcsolódik (ezt Claude előbb rosszul jósolta).
 - A felhasználó most tanulta meg, mi a log (Run ablak alul, `Alt+4`; INFO/WARN/ERROR), és hogyan kell olvasni.
-- **Következő:** commit („Add SQLite database configuration”), majd az első tábla létrehozása (pl. `schema.sql`;
+- Commit: „Add SQLite database configuration” (pusholva).
+- **Döntés (2026-09-30): az első tábla rögtön a `candles` tábla** (nem egy `prices` gyakorló tábla) – a felhasználó
+  választása, tudva, hogy így a candle/OHLCV fogalom (Phase 4 eleje) most jön. A táblát `schema.sql` hozza létre indításkor.
+- **Kész (2026-09-30):** candle / OHLCV elmagyarázva (AAPL napi példa, gyertya-rajz, zöld/piros, timeframe). A felhasználó
+  egy 4 trade-es 1 perces példán hibátlanul kiszámolta az OHLCV-t és a színt.
+- **Kész (2026-09-30):** a felhasználó megírta a `schema.sql`-t és a `spring.sql.init.mode=always` sort (Claude egy
+  memóriabeli SQLite-ban kétszer lefuttatva ellenőrizte: működik). Az első indítás a sorvégi szóköz miatt elhasalt, javítás után sikeres:
+  létrejött a `backtest.db` (12 KB, a projekt gyökerében, a `.gitignore` kizárja), benne a `candles` tábla (0 sor) és az SQLite
+  saját `sqlite_sequence` táblája. Az IntelliJ Project ablaka nem mutatja azonnal az új fájlt → Reload from Disk.
+- **Következő:** commit („Add candles table schema”), utána adat beírása a táblába (INSERT) és kiolvasása JdbcTemplate-tel.
+- (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
+  open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
+- (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;
   nem beágyazott DB-nél kell hozzá `spring.sql.init.mode=always`).
 - (Régi jegyzet:) `application.properties` (a `resources` mappa már létezik, üresen – az IntelliJ sablon hozta létre; a Git üres mappát nem követ, ezért nem látszott)
   (`spring.datasource.url`) – enélkül a `spring-boot:run` „Failed to configure a DataSource” hibával leáll.

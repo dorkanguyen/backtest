@@ -152,7 +152,11 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   memóriabeli SQLite-ban kétszer lefuttatva ellenőrizte: működik). Az első indítás a sorvégi szóköz miatt elhasalt, javítás után sikeres:
   létrejött a `backtest.db` (12 KB, a projekt gyökerében, a `.gitignore` kizárja), benne a `candles` tábla (0 sor) és az SQLite
   saját `sqlite_sequence` táblája. Az IntelliJ Project ablaka nem mutatja azonnal az új fájlt → Reload from Disk.
-- **Következő:** commit („Add candles table schema”), utána adat beírása a táblába (INSERT) és kiolvasása JdbcTemplate-tel.
+- Commit: „Add candles table schema” (pusholva).
+- Tábla megtekintése: IntelliJ Database ablak (a DatabaseTools plugin telepítve, de Ultimate-funkció lehet) vagy
+  DB Browser for SQLite (ingyenes).
+- **Folytatáskor (a felhasználó 2026-09-30 éjjel abbahagyta):** 1) a tábla megtekintése (IntelliJ Database ablak vagy
+  DB Browser – a lépéseket már leírtam neki), 2) utána: adat beírása a táblába (INSERT) és kiolvasása JdbcTemplate-tel.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

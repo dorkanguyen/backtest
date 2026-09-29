@@ -124,7 +124,12 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   (Tisztáztuk: a Git ág neve `main` és a Java osztály neve `Main` független egymástól.)
 - **Kész (2026-09-29): első indítás** (`spring-boot:run` a Maven ablak Plugins mappájából) sikeres, a felhasználó látta a
   Whitelabel Error Page-et (404) a `http://localhost:8080` címen → a szerver fut. **Phase 2 Spring Boot alapjai készen.**
-- **Következő:** commit („Add Spring Boot application class”), majd az első REST endpoint.
+- Commit: „Add Spring Boot application class” (pusholva).
+- **Kész (2026-09-29): első REST endpoint.** `org.example.api.HelloController` (`@RestController`, `@GetMapping("/hello")`
+  → „Hello, backtest!”), a felhasználó írta be, böngészőben kipróbálta. Elmagyarázva: HTTP request/response, GET/POST,
+  package, component scan (a Spring csak a `BacktestApplication` package-ében és alatta keres).
+- Később rendbe teendő: a `HelloController.java` CRLF sorvégű (IntelliJ), a többi fájl LF → `.gitattributes` javaslat.
+- **Következő:** commit („Add first REST endpoint”), utána Phase 3 (SQLite).
 - (Régi jegyzet:) **Phase 2 lépése (4/4): Spring Boot indító osztály** (`Main.java` helyett), majd `spring-boot:run`.
   Folytatáskor röviden ismételd át a felhasználóval: mit csinál a plugin (fat jar, `spring-boot:run`), a Plugins mappa
   a Maven ablakban; a felhasználó a jar-méret kísérletet és a Plugins mappa megnézését még nem csinálta meg maga.

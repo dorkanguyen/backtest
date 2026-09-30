@@ -168,7 +168,14 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   (üres konstruktor → nem kapja meg → hiba). Kiegészítve: `final` → fordítási hiba; `final` nélkül → `null` →
   `NullPointerException` → HTTP 500.
 - Commit: „Add candle count endpoint” (pusholva).
-- **Következő:** candle-ek kiolvasása listaként Java-ból (JdbcTemplate `query` + sor → objektum), majd írás Java-ból.
+- **Döntés (2026-09-30): a `Candle` Java `record`** (nem klasszikus class), a felhasználó választása. Helye:
+  `org.example.marketdata.Candle`. Mezők: `long id, String symbol, LocalDateTime openTime, double open, high, low,
+  close, long volume`. Árak egyelőre `double` (BigDecimal esetleg később). Elmagyarázva: osztály = sablon/űrlap,
+  objektum = kitöltött példány.
+- **Kész (2026-09-30):** a felhasználó létrehozta a `marketdata` package-et és a `Candle` recordot (IntelliJ New →
+  Java Class → Record; import `Alt+Enter`-rel). Claude ellenőrizte (hibátlan, CRLF), `clean package` → BUILD SUCCESS.
+- Commit: „Add Candle record” (pusholva).
+- **Következő:** `GET /candles` endpoint – candle-ek kiolvasása listaként Java-ból (JdbcTemplate `query` + sor → `Candle`), majd írás Java-ból.
   Figyelmeztetés: a Spring indítása előtt a DB Browserben Close Database.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.

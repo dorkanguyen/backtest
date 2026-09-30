@@ -194,7 +194,18 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 - **Kész (2026-09-30):** 1) `CandleRepository` (a felhasználó írta be, Claude ellenőrizte: hibátlan, CRLF, nincs
   sorvégi szóköz). 2) `CandleController` átírva a repository használatára (a felhasználó írta be, Claude ellenőrizte).
   **Kipróbálva (2026-09-30):** `/candles/count` → 1, `/candles` → AAPL – a refaktorálás működik.
-  Következik: commit („Move candle queries to CandleRepository”), utána POST + INSERT a repositoryban.
+  Commit: „Move candle queries to CandleRepository” (pusholva).
+- Elmagyarázva (2026-09-30): mi a JPA / Spring Data JPA és miért NEM azt használjuk (a felhasználó kérdezte; jól
+  válaszolt: a JPA az SQL-t és a RowMappert írná meg helyettünk). INSERT, `?` helyőrző (SQL injection), GET vs. POST, request body.
+- **Kész (2026-09-30):** `CandleRepository.save(Candle)` (`jdbcTemplate.update` + INSERT, `id` nélkül). Az `open_time`-ot
+  `DateTimeFormatter.ISO_LOCAL_DATE_TIME`-mal írjuk (a `LocalDateTime.toString()` a :00 másodpercet lehagyná).
+- **Kész (2026-09-30):** `@PostMapping("/candles")` + `@RequestBody Candle` a controllerben (a felhasználó írta be,
+  Claude ellenőrizte; kis lépésekre bontva kellett – a hosszabb magyarázatnál elveszett, mit kell tennie).
+- **Kész (2026-09-30): POST kipróbálva** az IntelliJ termináljából (`Alt+F12`, PowerShell `Invoke-RestMethod`; a HTTP Client
+  Ultimate-funkció lehet). count → 2, id = 2, a DB-ben `open_time` = `2026-09-30T15:31:00` (egységes formátum).
+  Tanulság: a hosszú parancs másoláskor két sorra tört → PowerShell-parancsot rövid sorokra bontva adni (`$b`, `$u` változók).
+  Commit: „Add endpoint to save candles” (pusholva). Figyelem: Spring Boot 4 = Jackson 3; ha a JSON-ból hiányzik az `id` (primitív `long`),
+  hibát adhat → a próbakérésben `"id": 0`-t küldjünk (a `save` úgyis figyelmen kívül hagyja).
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

@@ -3,6 +3,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Repository
@@ -31,6 +32,19 @@ public class CandleRepository {
                         rs.getDouble("close"),
                         rs.getLong("volume")
                 )
+        );
+    }
+
+    public void save(Candle candle) {
+        jdbcTemplate.update(
+                "INSERT INTO candles (symbol, open_time, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                candle.symbol(),
+                candle.openTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                candle.open(),
+                candle.high(),
+                candle.low(),
+                candle.close(),
+                candle.volume()
         );
     }
 }

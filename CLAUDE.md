@@ -175,7 +175,18 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 - **Kész (2026-09-30):** a felhasználó létrehozta a `marketdata` package-et és a `Candle` recordot (IntelliJ New →
   Java Class → Record; import `Alt+Enter`-rel). Claude ellenőrizte (hibátlan, CRLF), `clean package` → BUILD SUCCESS.
 - Commit: „Add Candle record” (pusholva).
-- **Következő:** `GET /candles` endpoint – candle-ek kiolvasása listaként Java-ból (JdbcTemplate `query` + sor → `Candle`), majd írás Java-ból.
+- Elmagyarázva (2026-09-30): miért külön package a `marketdata` és az `api` (étterem: api = pincér, marketdata =
+  hozzávalók, strategy = szakács; a backtest HTTP nélkül is fut). A felhasználó szerint világos.
+- **Kész (2026-09-30):** `GET /candles` a `CandleController`-ben (JdbcTemplate `query` + RowMapper lambdával →
+  `List<Candle>` → JSON), a felhasználó írta be. A böngésző az AAPL candle-t mutatta JSON-ban. Egyelőre az SQL a
+  controllerben van (egy új fogalom egyszerre); **később** átköltöztetni egy `CandleRepository`-ba (a strategy/backtest
+  is olvasni fog candle-t, HTTP nélkül).
+- **Tanulság (2026-09-30):** 404 jött, mert egy **régi Spring példány** (19:09-kor indítva) tovább futott és foglalta a
+  8080-as portot, az új indítás ezért elhasalt. Diagnózis WSL-ből: `powershell.exe` → `Get-NetTCPConnection -LocalPort 8080`
+  + `Win32_Process` (java.exe, CreationDate). Megoldás: az IntelliJ Run ablak minden fülén Stop, majd újraindítás.
+  Elmagyarázva: port = „ajtószám”.
+- JSON elmagyarázva (lista `[ ]`, objektum `{ }`, Jackson automatikusan alakít). Commit: „Add endpoint to list candles” (pusholva).
+- **Következő:** `CandleRepository` (SQL ki a controllerből) vagy candle írása Java-ból – a felhasználóval egyeztetni.
   Figyelmeztetés: a Spring indítása előtt a DB Browserben Close Database.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.

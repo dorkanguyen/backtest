@@ -155,8 +155,21 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 - Commit: „Add candles table schema” (pusholva).
 - Tábla megtekintése: IntelliJ Database ablak (a DatabaseTools plugin telepítve, de Ultimate-funkció lehet) vagy
   DB Browser for SQLite (ingyenes).
-- **Folytatáskor (a felhasználó 2026-09-30 éjjel abbahagyta):** 1) a tábla megtekintése (IntelliJ Database ablak vagy
-  DB Browser – a lépéseket már leírtam neki), 2) utána: adat beírása a táblába (INSERT) és kiolvasása JdbcTemplate-tel.
+- **Kész (2026-09-30):** a felhasználó megnézte a `candles` táblát a **DB Browser for SQLite**-ban (portable zip változat,
+  kicsomagolva: `Downloads\DB.Browser.for.SQLite-v3.13.1-win64\DB Browser for SQLite.exe`), és látta mind a 8 oszlopot.
+  Nagyon apró lépésekben kell vezetni (a „kicsomagolás = telepítés” sem volt egyértelmű).
+- **Kész (2026-09-30):** az első sort kézzel beírta (DB Browser → Execute SQL → `INSERT`, majd Write Changes):
+  `AAPL, 2026-09-30T15:30:00, 170.00, 171.20, 169.50, 170.80, 1200` → id = 1. (A DB nincs a Gitben, ez csak helyi adat.)
+- **Kész (2026-09-30):** `org.example.api.CandleController` (`GET /candles/count` → `SELECT COUNT(*) FROM candles`
+  JdbcTemplate-tel, constructor injection). Futtatva a böngészőben **1**-et adott (az 1 kézi sor). Még nincs commitolva
+  (a fájl CRLF sorvégű, mint a `HelloController`).
+- **Kész (2026-09-30): dependency injection elmagyarázva** a `CandleController` konstruktorán (szakács/étterem-vezető
+  hasonlat; a Spring hozza létre a `JdbcTemplate`-et és adja be a konstruktornak). Az ellenőrző kérdésre jól válaszolt
+  (üres konstruktor → nem kapja meg → hiba). Kiegészítve: `final` → fordítási hiba; `final` nélkül → `null` →
+  `NullPointerException` → HTTP 500.
+- Commit: „Add candle count endpoint” (pusholva).
+- **Következő:** candle-ek kiolvasása listaként Java-ból (JdbcTemplate `query` + sor → objektum), majd írás Java-ból.
+  Figyelmeztetés: a Spring indítása előtt a DB Browserben Close Database.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

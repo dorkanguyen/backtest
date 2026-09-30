@@ -1,41 +1,28 @@
 package org.example.api;
 
 import org.example.marketdata.Candle;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.example.marketdata.CandleRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 public class CandleController {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final CandleRepository candleRepository;
 
-    public CandleController(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public CandleController(CandleRepository candleRepository) {
+        this.candleRepository = candleRepository;
     }
 
     @GetMapping("/candles/count")
     public Integer count() {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM candles", Integer.class);
+        return candleRepository.count();
     }
 
     @GetMapping("/candles")
     public List<Candle> findAll() {
-        return jdbcTemplate.query(
-                "SELECT id, symbol, open_time, open, high, low, close, volume FROM candles",
-                (rs, rowNum) -> new Candle(
-                        rs.getLong("id"),
-                        rs.getString("symbol"),
-                        LocalDateTime.parse(rs.getString("open_time")),
-                        rs.getDouble("open"),
-                        rs.getDouble("high"),
-                        rs.getDouble("low"),
-                        rs.getDouble("close"),
-                        rs.getLong("volume")
-                )
-        );
+        return candleRepository.findAll();
     }
 }

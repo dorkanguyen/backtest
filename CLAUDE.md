@@ -186,8 +186,15 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   + `Win32_Process` (java.exe, CreationDate). Megoldás: az IntelliJ Run ablak minden fülén Stop, majd újraindítás.
   Elmagyarázva: port = „ajtószám”.
 - JSON elmagyarázva (lista `[ ]`, objektum `{ }`, Jackson automatikusan alakít). Commit: „Add endpoint to list candles” (pusholva).
-- **Következő:** `CandleRepository` (SQL ki a controllerből) vagy candle írása Java-ból – a felhasználóval egyeztetni.
+- **Döntés (2026-09-30): előbb `CandleRepository`** (A), utána candle írása Java-ból POST-tal (B) – a felhasználó választása.
+- **Folyamatban:** 1) `org.example.marketdata.CandleRepository` (`@Repository`, JdbcTemplate constructor injection,
+  `count()` + `findAll()` a RowMapperrel) létrehozása; 2) utána a `CandleController` átírása, hogy a repositoryt kapja
+  (DI a saját osztállyal). Ezután: POST + INSERT a repositoryban.
   Figyelmeztetés: a Spring indítása előtt a DB Browserben Close Database.
+- **Kész (2026-09-30):** 1) `CandleRepository` (a felhasználó írta be, Claude ellenőrizte: hibátlan, CRLF, nincs
+  sorvégi szóköz). 2) `CandleController` átírva a repository használatára (a felhasználó írta be, Claude ellenőrizte).
+  **Kipróbálva (2026-09-30):** `/candles/count` → 1, `/candles` → AAPL – a refaktorálás működik.
+  Következik: commit („Move candle queries to CandleRepository”), utána POST + INSERT a repositoryban.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

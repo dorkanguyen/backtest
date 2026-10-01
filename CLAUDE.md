@@ -257,6 +257,11 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 - **Következő lépés (javaslat):** max drawdown számolása (equityCurve-ből, számpéldával elmagyarázva), utána
   esetleg: double kerekítés kezelése (BigDecimal vagy kerekítés a kimenetnél), jutalék, `HelloController` törlése,
   `.gitattributes` (CRLF/LF). Utána Phase 6: Databento.
+- **Cél-kérdés (2026-10-02):** a felhasználó azt kérdezte, kész lehet-e 2 hét alatt „egy egész oké verzió”.
+  Claude válasza: a teljes terv (MBP-10, részteljesülés, eseményalapú engine, React) nem reális 2 hét alatt;
+  egy szűkített, de valódi verzió (Databento BBO adat + egyszerű fair price, pl. mid/microprice + backtest eredmény
+  REST-en) reális lehet napi munkával. **Folytatáskor közösen meg kell határozni, mi az „oké verzió”**, és ahhoz
+  igazítani a sorrendet. Elmagyarázva a RisingPriceStrategy (momentum/trendkövetés, késés, oldalazó piac, költségek).
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

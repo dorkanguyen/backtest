@@ -238,9 +238,12 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 - **Döntés (2026-10-01): `Side` enum** (BUY/SELL), nem előjeles mennyiség – a felhasználó választása.
 - **Kész (2026-10-02):** 1. csomag (`Side`, `Order`, `Fill`) – a felhasználó írta be, Claude ellenőrizte (hibátlan,
   CRLF, nincs sorvégi szóköz), `clean package` sikeres. Commit: „Add Order, Side and Fill” (pusholva).
-- **Folyamatban (2026-10-02):** 2. csomag: `execution.ExecutionEngine` (`Fill execute(Order, Candle)`, close áron,
+- **Kész (2026-10-02):** 2. csomag: `execution.ExecutionEngine` (`Fill execute(Order, Candle)`, close áron,
   time = candle.openTime()) és `portfolio.Portfolio` (konstruktor kezdő pénzzel, `apply(Fill)`, `equity(price)`,
-  `getCash()`, `getPosition()`). Claude megadta a kódot, a felhasználó írja be.
+  `getCash()`, `getPosition()`). A felhasználó írta be, Claude ellenőrizte (hibátlan), `clean package` sikeres.
+  Elmagyarázva: konstruktor, `this`, `void`, `==` enumon, getter, equity számpéldával.
+  Commit: „Add ExecutionEngine and Portfolio” (pusholva).
+  Következő: 3. csomag (`backtest.Backtester`, `api.BacktestController`).
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

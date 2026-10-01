@@ -243,7 +243,20 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   `getCash()`, `getPosition()`). A felhasználó írta be, Claude ellenőrizte (hibátlan), `clean package` sikeres.
   Elmagyarázva: konstruktor, `this`, `void`, `==` enumon, getter, equity számpéldával.
   Commit: „Add ExecutionEngine and Portfolio” (pusholva).
-  Következő: 3. csomag (`backtest.Backtester`, `api.BacktestController`).
+- **Kész (2026-10-02): 3. csomag** – a felhasználó beírta, Claude ellenőrizte (hibátlan), `clean package` sikeres:
+  a) `CandleRepository.findAll()` SQL-je kap `ORDER BY open_time`-ot (backtestnél kötelező az időrend);
+  b) `backtest.BacktestResult` record (startingCash, finalEquity, pnl, `List<Fill> fills`, `List<Double> equityCurve`);
+  c) `backtest.Backtester` (sima osztály, `run(candles, strategy, startingCash)`, for ciklus, diff → Order → Fill →
+  Portfolio, equity minden gyertya után); d) `api.BacktestController` (`GET /backtest`, CandleRepository DI,
+  minden kérésnél `new RisingPriceStrategy()` – mert a stratégiának állapota van!). Drawdown: KÉSŐBB, külön lépés.
+  Várt eredmény: BUY 15:32 @171.20, SELL 15:36 @172.40, finalEquity 1001.20, pnl ≈ 1.20 (double kerekítési hiba lehet);
+  equity: 1000, 1000, 1000, 1000.70, 1001.40, 1001.80, 1001.20 ×4.
+  **Kipróbálva (2026-10-02):** `GET /backtest` pontosan a várt eredményt adta (pnl 1.1999999999999318 – double
+  kerekítési hiba, elmagyarázva; BigDecimal később). **AZ ELSŐ VÉGIGFUTÓ BACKTEST MŰKÖDIK.**
+  Commit: „Add backtester and backtest endpoint” (pusholva).
+- **Következő lépés (javaslat):** max drawdown számolása (equityCurve-ből, számpéldával elmagyarázva), utána
+  esetleg: double kerekítés kezelése (BigDecimal vagy kerekítés a kimenetnél), jutalék, `HelloController` törlése,
+  `.gitattributes` (CRLF/LF). Utána Phase 6: Databento.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

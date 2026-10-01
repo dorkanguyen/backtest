@@ -21,7 +21,7 @@ public class CandleRepository {
 
     public List<Candle> findAll() {
         return jdbcTemplate.query(
-                "SELECT id, symbol, open_time, open, high, low, close, volume FROM candles",
+                "SELECT id, symbol, open_time, open, high, low, close, volume FROM candles ORDER BY open_time",
                 (rs, rowNum) -> new Candle(
                         rs.getLong("id"),
                         rs.getString("symbol"),

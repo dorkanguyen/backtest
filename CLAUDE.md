@@ -206,6 +206,22 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   Tanulság: a hosszú parancs másoláskor két sorra tört → PowerShell-parancsot rövid sorokra bontva adni (`$b`, `$u` változók).
   Commit: „Add endpoint to save candles” (pusholva). Figyelem: Spring Boot 4 = Jackson 3; ha a JSON-ból hiányzik az `id` (primitív `long`),
   hibát adhat → a próbakérésben `"id": 0`-t küldjünk (a `save` úgyis figyelmen kívül hagyja).
+- **Kész (2026-10-01): kis kézi adatsor (Phase 4 vége).** A felhasználó DB Browserben egy több soros `INSERT`-tel
+  beírt 8 új AAPL 1 perces gyertyát (15:32–15:39) → összesen 10 sor (id 1–10). A „történet”: 170.60-ról 173.00-ig
+  emelkedik (csúcs 15:35), majd 170.50-ig visszaesik; minden open = előző close. (Csak helyi adat, nincs a Gitben.)
+  DB megnyitása: Open Database (`Ctrl+O`) → teljes útvonal a Fájlnév mezőbe. Böngészőben ellenőrizve: count = 10,
+  `/candles` mind a 10-et mutatja. **Phase 4 kész → Phase 5 (egyszerű backtest) következik.**
+- Elmagyarázva (2026-10-01): miért előbb a candle-backtest (autó + egyszerű motor hasonlat; a váz marad, csak az „agy”
+  cserélődik fair price-ra), és hogy a stratégia csak *becsül* (nem lát a jövőbe), a backtest pedig méri, jól becsül-e.
+- **Döntés (2026-10-01): a Strategy célpozíciót (target position) ad vissza**, nem BUY/SELL jelzést – a felhasználó
+  választása. Ok: nincs véletlen dupla vétel (a rendszer a különbséget számolja: cél − jelenlegi), mennyiséget is ki tud
+  fejezni (fair price eltérés mérete), a max pozíció könnyen betartható.
+- **KÖVETKEZŐ LÉPÉS (itt hagytuk abba, 2026-10-01):** `org.example.strategy.Strategy` interfész létrehozása:
+  `int targetPosition(Candle candle);` (interfész = „álláshirdetés”: mit kell tudni, nem hogyan). A kódot és a
+  magyarázatot Claude már megmutatta; a felhasználó még NEM mondta rá, hogy mehet, és még nem írta be.
+  Folytatáskor: röviden ismételd át, kérdezd meg, mehet-e, majd adj pontos IntelliJ lépéseket (New → Package `strategy`,
+  New → Java Class → Interface), a kódot a felhasználó írja be. Utána: egy egyszerű stratégia („ha nő az ár → 1”) –
+  ehhez el kell dönteni, hogyan látja az előző gyertyát (pl. a stratégia maga megjegyzi).
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

@@ -228,8 +228,19 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   változó, `private`, `@Override`, `&&`, a hasonlítás/feljegyzés sorrendje. Claude futtatta a `clean package`-et
   (PowerShell, IntelliJ 2025.2.1 beépített Maven, `openjdk-25.0.1`) → sikeres.
   Commit: „Add Strategy interface and RisingPriceStrategy” (pusholva).
-- **Következő:** a stratégia még sehol nem fut. Következik az `order` / `execution` / `portfolio` rész, vagy előbb egy
-  kis kipróbálás (pl. egy endpoint, ami a 10 gyertyára kiírja a célpozíciókat) – ezt a felhasználóval kell eldönteni.
+- A felhasználó (2026-10-01) rögtön az order/execution/portfolio részt kérte, **több fájlt egyszerre** (csomagokban).
+- **Phase 5 terve (2026-10-01):** 1) `order.Side` (enum BUY/SELL), 2) `order.Order` (record: symbol, side, quantity),
+  3) `execution.Fill` (record: symbol, side, quantity, price, time), 4) `execution.ExecutionEngine` (order + candle →
+  fill a close áron), 5) `portfolio.Portfolio` (cash, position, equity = cash + position × ár), 6) `backtest.Backtester`
+  (karmester: candle → strategy → diff = cél − pozíció → order → fill → portfolio → equity), 7) `api.BacktestController`
+  (`GET /backtest`). Egyszerűsítések: close áron fill, nincs jutalék, csak long (0/1). Kezdő pénz: 1000.
+  Csomagok: (1–3), (4–5), (6–7).
+- **Döntés (2026-10-01): `Side` enum** (BUY/SELL), nem előjeles mennyiség – a felhasználó választása.
+- **Kész (2026-10-02):** 1. csomag (`Side`, `Order`, `Fill`) – a felhasználó írta be, Claude ellenőrizte (hibátlan,
+  CRLF, nincs sorvégi szóköz), `clean package` sikeres. Commit: „Add Order, Side and Fill” (pusholva).
+- **Folyamatban (2026-10-02):** 2. csomag: `execution.ExecutionEngine` (`Fill execute(Order, Candle)`, close áron,
+  time = candle.openTime()) és `portfolio.Portfolio` (konstruktor kezdő pénzzel, `apply(Fill)`, `equity(price)`,
+  `getCash()`, `getPosition()`). Claude megadta a kódot, a felhasználó írja be.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

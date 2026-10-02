@@ -315,3 +315,10 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
 - (Régi jegyzet:) **Phase 2 lépése (4/4): Spring Boot indító osztály** (`Main.java` helyett), majd `spring-boot:run`.
   Folytatáskor röviden ismételd át a felhasználóval: mit csinál a plugin (fat jar, `spring-boot:run`), a Plugins mappa
   a Maven ablakban; a felhasználó a jar-méret kísérletet és a Plugins mappa megnézését még nem csinálta meg maga.
+- **Kész (2026-10-02): takarítás.** `HelloController.java` törölve. `.gitattributes` (a felhasználó írta be; először a
+  terminálból másolt 2 vezető szóköz és csonka sor volt benne → javítva): `* text=auto eol=lf`, `*.cmd`/`*.bat` →
+  `eol=crlf`. A Gitben minden szöveges fájl CRLF volt → `git add --renormalize . ':!CLAUDE.md'` (22 fájl, csak sorvég;
+  `git diff --cached --ignore-cr-at-eol` ellenőrizve). A Gitben most minden LF; a lemezen a fájlok még CRLF-ek lehetnek
+  (ez nem gond, a Git commitkor normalizál). Commit: „Add .gitattributes, normalize line endings and remove HelloController” (pusholva).
+- **Következő lépés:** a motor csiszolása kész (drawdown, BigDecimal, jutalék, takarítás). Nyitott: equityCurve scale
+  egységesítése; frontend előrébb hozása vs. Phase 6 (Databento) – a felhasználóval eldönteni.

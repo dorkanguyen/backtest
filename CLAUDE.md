@@ -361,7 +361,16 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   BUILD SUCCESS. 8099-es porton kipróbálva: count 10, `/candles` 10 db időrendben, `/backtest` pnl −0.80, maxDrawdown 1.60,
   totalCommission 2.00 – változatlan. A POST (INSERT) nincs kipróbálva (ne kerüljön próbasor a DB-be).
   Commit: „Add Checkstyle with Google style and IntelliJ code style” (pusholva). **Checkstyle kész.**
-- **Következő lépés:** az IntelliJ CheckStyle-IDEA plugin átállítása 14.3.0-ra + a `config/checkstyle/checkstyle.xml`
-  aktiválása benne (hogy az IntelliJ is ugyanazt jelezze, mint a Maven); utána döntés: frontend (A, Claude ajánlja) vs.
-  Databento (B). Nyitott apróság: equityCurve scale egységesítése.
+- **Döntés (2026-10-02): a projekt Checkstyle 14.1.0-ra állt vissza** (14.3.0 helyett). Ok: a frissített
+  CheckStyle-IDEA plugin (26.18.2, a legújabb) legfeljebb 14.1.0-t tud, és a 14.3-as Google config
+  `GoogleRightCurly` modulja 14.1-gyel nem tölt be → egyetlen szabályfájl, IntelliJ = Maven. A
+  `config/checkstyle/checkstyle.xml` most a 14.1.0 `google_checks.xml`-je + ugyanaz a 4/8-as behúzás; `pom.xml`
+  checkstyle dependency 14.1.0. Build sikeres, 0 violation (Claude ellenőrizte). Ha a plugin később tudja a 14.3-at → visszaváltani.
+  Nincs commitolva.
+- **Kész (2026-10-02): IntelliJ CheckStyle-IDEA beállítva** (a felhasználó kattintotta végig, nem akarta bezárni az
+  IntelliJ-t): verzió fixen **14.1.0** (NEM „latest” – a Mavennel egyezzen), Scan Scope = Java + tesztek, aktív config
+  „Backtest” = `$PROJECT_DIR$/config/checkstyle/checkstyle.xml` (PROJECT_RELATIVE) → `.idea/checkstyle-idea.xml`
+  (a Gitbe kerül). Check Project → „no problems found”.
+- **Következő lépés:** commit; utána döntés: frontend (A, Claude ajánlja) vs. Databento (B).
+  Nyitott apróság: equityCurve scale egységesítése.
 

@@ -322,3 +322,15 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   (ez nem gond, a Git commitkor normalizál). Commit: „Add .gitattributes, normalize line endings and remove HelloController” (pusholva).
 - **Következő lépés:** a motor csiszolása kész (drawdown, BigDecimal, jutalék, takarítás). Nyitott: equityCurve scale
   egységesítése; frontend előrébb hozása vs. Phase 6 (Databento) – a felhasználóval eldönteni.
+- **Döntés (2026-10-02): kódstílus = Google Java Style, de 4 szóközös behúzással** (a Google 2-t ír elő), Checkstyle-lal
+  a Maven buildbe kötve + `.editorconfig`. Az IntelliJ-ben a CheckStyle-IDEA plugin már telepítve van (Sun/Google Checks).
+  **Javadoc angolul**, tömören: minden osztály/record/interfész + nem triviális public metódus; triviális getter nem kell;
+  a „mit/miért”-et írja le, nem a „hogyan”-t. Sorrend: 1) `.editorconfig`, 2) Checkstyle, 3) Javadoc, 4) döntés: frontend vs. Databento.
+- **Kész (2026-10-02): `.editorconfig`** (a felhasználó írta be: utf-8, LF, final newline, trailing whitespace törlés,
+  4 szóköz; `.cmd/.bat` CRLF; `.md`-ben a trailing whitespace marad). IntelliJ: „Ensure every saved file ends with a line
+  break” bekapcsolva (alapból ki volt → ezért nem volt a Java fájlok végén sorvég). IntelliJ-beállítások helye:
+  `AppData\Roaming\JetBrains\IntelliJIdea2025.2\options` (futás közben NE írjuk, az IntelliJ felülírja).
+  Commit: „Add .editorconfig” (pusholva).
+- **Folyamatban (2026-10-02): Javadoc** – a felhasználó kérésére Claude írja meg (angol, tömör) az összes fájlba;
+  commit csak a felhasználó átnézése után. A Checkstyle ezután jön.
+

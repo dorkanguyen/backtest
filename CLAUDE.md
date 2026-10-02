@@ -285,6 +285,19 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   adja, pl. 171.2). `RisingPriceStrategy.previousClose` kezdőértéke `null` (= még nincs előző gyertya, a régi 0 helyett).
   `ExecutionEngine` változatlan (a `candle.close()` már BigDecimal). Build sikeres; Claude a jar-t a 8099-es porton
   kipróbálta: `pnl 1.2`, `maxDrawdown 0.6`, equity pontos – kerekítési hiba eltűnt. Commit: „Use BigDecimal for prices and money” (pusholva).
+  A felhasználó a 8080-on előbb a régi eredményt látta (13:55-kor indított régi példány) → újraindítás után 1.2 / 0.6.
+  Elmagyarázva: a futó program nem frissül magától, kódváltozás után mindig újraindítani.
+- **Cél pontosítva (2026-10-02):** a felhasználó **„quant cég stílusú”** rendszert akar (order book, fair price) –
+  ez egyezik a hosszú távú tervvel. Elmagyarázva röviden: költségek a quant világban (bróker jutalék darabonként,
+  tőzsdei maker/taker díj + rebate, spread/slippage – ez utóbbit majd az order book execution kezeli).
+- **Döntés (2026-10-02): jutalék `CommissionModel` interfésszel** (nem egyetlen fix szám) – bővíthető (per-share,
+  maker/taker stb.) az `ExecutionEngine` átírása nélkül.
+- **Következő lépés (terv kész, jóváhagyásra vár – 2026-10-02):** 1) ÚJ `execution.CommissionModel`
+  (`BigDecimal calculate(int quantity, BigDecimal price)`); 2) ÚJ `execution.PerShareCommission` (konstruktor: díj/db
+  + minimum; IBKR-szerű 0.005 $/db, min. 1.00 $); 3) `Fill` + `BigDecimal commission`; 4) `ExecutionEngine` konstruktorban
+  kapja a modellt; 5) `Portfolio` mindkét irányban levonja; 6) `Backtester` továbbadja, `BacktestResult` + `totalCommission`,
+  `BacktestController` hozza létre a modellt. Várt: pnl −0.80, maxDrawdown 1.60, totalCommission 2.00, equity
+  1000, 1000, 999, 999.7, 1000.4, 1000.8, 999.2 ×4. **Folytatáskor megkérdezni: Claude írja be, vagy a felhasználó?**
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

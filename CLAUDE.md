@@ -331,6 +331,14 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   break” bekapcsolva (alapból ki volt → ezért nem volt a Java fájlok végén sorvég). IntelliJ-beállítások helye:
   `AppData\Roaming\JetBrains\IntelliJIdea2025.2\options` (futás közben NE írjuk, az IntelliJ felülírja).
   Commit: „Add .editorconfig” (pusholva).
-- **Folyamatban (2026-10-02): Javadoc** – a felhasználó kérésére Claude írja meg (angol, tömör) az összes fájlba;
-  commit csak a felhasználó átnézése után. A Checkstyle ezután jön.
+- **Folyamatban (2026-10-02): Javadoc** – Claude beírta mind a 16 Java fájlba (154 sor, csak komment; a fájlok
+  most LF-esek a lemezen is). Build sikeres; `mvn javadoc:javadoc -Ddoclint=all` → 0 hiba, 18 „hiányzó komment”
+  figyelmeztetés, mind szándékos (getterek, enum értékek, alap/DI konstruktorok, `main`, egysoros leírásnál nincs
+  `@param/@return`). A felhasználó átnézte → commit: „Add Javadoc to all classes” (pusholva).
+- **Folyamatban (2026-10-02): Checkstyle**, 3 lépés: 1) szabályfájl, 2) `maven-checkstyle-plugin` (eleinte csak
+  figyelmeztet), 3) hibák javítása (pl. 7 sor > 100 karakter), utána a build hibát ad szabálysértésnél.
+  **1) kész (nincs commitolva):** `config/checkstyle/checkstyle.xml` = a Checkstyle **14.3.0** (legfrissebb, 2026-09-27)
+  `google_checks.xml`-je, egyetlen módosítással: Indentation basicOffset/caseIndent/arrayInitIndent 4,
+  braceAdjustment 0, throwsIndent/lineWrappingIndentation 8. Plugin: `maven-checkstyle-plugin` 3.6.0 + checkstyle
+  14.3.0 dependency. Az IntelliJ CheckStyle-IDEA plugin 12.1.0-t használ → át kell állítani 14.3.0-ra.
 

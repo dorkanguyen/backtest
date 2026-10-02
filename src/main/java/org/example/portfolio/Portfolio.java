@@ -1,9 +1,8 @@
 package org.example.portfolio;
 
+import java.math.BigDecimal;
 import org.example.execution.Fill;
 import org.example.order.Side;
-
-import java.math.BigDecimal;
 
 /**
  * Tracks cash and position, and calculates equity.

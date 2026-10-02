@@ -6,9 +6,8 @@ import org.example.marketdata.Candle;
  * Decides which position we want to hold.
  *
  * <p>A strategy never trades directly; it only returns a target position. The
- * {@link org.example.backtest.Backtester} turns the difference into an order.
- * Strategies may keep state (for example the previous candle), so use a new
- * instance for every backtest.
+ * {@link org.example.backtest.Backtester} turns the difference into an order. Strategies may keep
+ * state (for example the previous candle), so use a new instance for every backtest.
  */
 public interface Strategy {
 

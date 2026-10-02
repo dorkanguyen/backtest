@@ -25,4 +25,5 @@ public record Candle(
         BigDecimal close,
         long volume
 ) {
+
 }

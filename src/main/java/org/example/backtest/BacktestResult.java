@@ -1,9 +1,8 @@
 package org.example.backtest;
 
-import org.example.execution.Fill;
-
 import java.math.BigDecimal;
 import java.util.List;
+import org.example.execution.Fill;
 
 /**
  * Summary of one backtest run.
@@ -25,4 +24,5 @@ public record BacktestResult(
         BigDecimal maxDrawdown,
         BigDecimal totalCommission
 ) {
+
 }

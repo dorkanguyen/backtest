@@ -8,6 +8,11 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
+[*.java]
+ij_continuation_indent_size = 8
+ij_java_align_multiline_records = false
+ij_java_doc_align_param_comments = false
+ij_java_doc_do_not_wrap_if_one_line = true
 
 [*.{cmd,bat}]
 end_of_line = crlf

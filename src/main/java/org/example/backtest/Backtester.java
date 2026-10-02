@@ -1,5 +1,9 @@
 package org.example.backtest;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import org.example.execution.CommissionModel;
 import org.example.execution.ExecutionEngine;
 import org.example.execution.Fill;
 import org.example.marketdata.Candle;
@@ -7,11 +11,6 @@ import org.example.order.Order;
 import org.example.order.Side;
 import org.example.portfolio.Portfolio;
 import org.example.strategy.Strategy;
-import org.example.execution.CommissionModel;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Runs a strategy over historical candles and measures the result.
@@ -31,7 +30,8 @@ public class Backtester {
      * @param commissionModel how commission is charged on each fill
      * @return the result with PnL, fills, equity curve and max drawdown
      */
-    public BacktestResult run(List<Candle> candles, Strategy strategy, BigDecimal startingCash, CommissionModel commissionModel) {
+    public BacktestResult run(List<Candle> candles, Strategy strategy, BigDecimal startingCash,
+            CommissionModel commissionModel) {
         ExecutionEngine executionEngine = new ExecutionEngine(commissionModel);
         Portfolio portfolio = new Portfolio(startingCash);
         List<Fill> fills = new ArrayList<>();
@@ -68,7 +68,8 @@ public class Backtester {
             }
         }
 
-        return new BacktestResult(startingCash, finalEquity, finalEquity.subtract(startingCash), fills, equityCurve, maxDrawdown,
+        return new BacktestResult(startingCash, finalEquity, finalEquity.subtract(startingCash),
+                fills, equityCurve, maxDrawdown,
                 totalCommission);
     }
 }

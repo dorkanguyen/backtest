@@ -1,9 +1,8 @@
 package org.example.execution;
 
+import java.math.BigDecimal;
 import org.example.marketdata.Candle;
 import org.example.order.Order;
-
-import java.math.BigDecimal;
 
 /**
  * Simulates how orders are filled.

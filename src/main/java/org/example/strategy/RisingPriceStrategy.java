@@ -1,7 +1,7 @@
 package org.example.strategy;
-import org.example.marketdata.Candle;
 
 import java.math.BigDecimal;
+import org.example.marketdata.Candle;
 
 /**
  * Simple momentum strategy: hold 1 share if the close price rose since the previous candle.

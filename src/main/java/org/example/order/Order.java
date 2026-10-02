@@ -8,4 +8,5 @@ package org.example.order;
  * @param quantity number of shares, always positive
  */
 public record Order(String symbol, Side side, int quantity) {
+
 }

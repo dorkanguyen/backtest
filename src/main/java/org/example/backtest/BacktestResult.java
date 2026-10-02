@@ -9,6 +9,7 @@ public record BacktestResult(
         double finalEquity,
         double pnl,
         List<Fill> fills,
-        List<Double> equityCurve
+        List<Double> equityCurve,
+        double maxDrawdown
 ) {
 }

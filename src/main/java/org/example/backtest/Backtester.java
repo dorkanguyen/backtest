@@ -19,6 +19,8 @@ public class Backtester {
         List<Fill> fills = new ArrayList<>();
         List<Double> equityCurve = new ArrayList<>();
         double finalEquity = startingCash;
+        double peak = startingCash;
+        double maxDrawdown = 0;
 
         for (Candle candle : candles) {
             int target = strategy.targetPosition(candle);
@@ -37,8 +39,16 @@ public class Backtester {
 
             finalEquity = portfolio.equity(candle.close());
             equityCurve.add(finalEquity);
+            if (finalEquity > peak) {
+                peak = finalEquity;
+            }
+            double drawdown = peak - finalEquity;
+            if (drawdown > maxDrawdown) {
+                maxDrawdown = drawdown;
+            }
         }
 
-        return new BacktestResult(startingCash, finalEquity, finalEquity - startingCash, fills, equityCurve);
+
+        return new BacktestResult(startingCash, finalEquity, finalEquity - startingCash, fills, equityCurve, maxDrawdown);
     }
 }

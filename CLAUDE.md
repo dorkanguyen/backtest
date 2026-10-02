@@ -262,6 +262,15 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   egy szűkített, de valódi verzió (Databento BBO adat + egyszerű fair price, pl. mid/microprice + backtest eredmény
   REST-en) reális lehet napi munkával. **Folytatáskor közösen meg kell határozni, mi az „oké verzió”**, és ahhoz
   igazítani a sorrendet. Elmagyarázva a RisingPriceStrategy (momentum/trendkövetés, késés, oldalazó piac, költségek).
+- **Döntés (2026-10-02): „B” irány – minőség a gyorsaság előtt.** A felhasználó egy ténylegesen **szép appot** akar,
+  **nagyon jó frontenddel** és „egészen oké” backenddel; a 2 hetes határidő nem kötelező. Előbb a mostani motor
+  csiszolása (max drawdown → kerekítés → jutalék → takarítás: `HelloController`, `.gitattributes`), csak utána Databento.
+  Nyitott kérdés későbbre: a frontend (React) előrébb hozása (pl. a mostani candle-backtesthez már legyen felület).
+- **Kész (2026-10-02): max drawdown.** Elmagyarázva (csúcs − equity, számpéldával); a felhasználó a valódi
+  görbén hibátlanul kiszámolta (0.60, 1001.80 → 1001.20). Kód: `BacktestResult` új mező `double maxDrawdown`;
+  `Backtester` a meglévő ciklusban követi a `peak`-et és a `maxDrawdown`-t. A felhasználó írta be (egy vessző
+  lemaradt a recordból → Claude észrevette). `clean package` sikeres; `/backtest` → `maxDrawdown: 0.6000000000000227`.
+  Következő: a double kerekítési hiba kezelése.
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

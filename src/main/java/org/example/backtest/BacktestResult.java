@@ -2,14 +2,15 @@ package org.example.backtest;
 
 import org.example.execution.Fill;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public record BacktestResult(
-        double startingCash,
-        double finalEquity,
-        double pnl,
+        BigDecimal startingCash,
+        BigDecimal finalEquity,
+        BigDecimal pnl,
         List<Fill> fills,
-        List<Double> equityCurve,
-        double maxDrawdown
+        List<BigDecimal> equityCurve,
+        BigDecimal maxDrawdown
 ) {
 }

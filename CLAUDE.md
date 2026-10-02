@@ -65,6 +65,10 @@ Az első cél: egy **működő, egyszerű történelmi backtest**. Nem akarunk m
   Mindig mutasd meg előre, mit készülünk csinálni. Fontos állapotoknál javasolj commitot (pl. "Add first REST endpoint").
 - CLAUDE.md: fontos új döntést magától rögzít, és utólag jelzi. Git-tel követjük.
 - Dokumentáció (`docs/architecture.md`, `docs/trading-concepts.md` stb.) csak akkor készül, amikor tényleg kell.
+- **Ne kérdezd, hogy „mára elég-e”** – a felhasználó szól, ha abba akarja hagyni. Egy lépés után egyszerűen a
+  következő lépés jöhet (a megállás és visszajelzés-várás lépésenként továbbra is marad).
+- **Ahol lehet, a profi megoldást választjuk** (nem a leggyorsabbat) – a felhasználó kérése (2026-10-02).
+- A `git add .` használható, de előtte mindig `git status` (nehogy secret vagy nem kívánt fájl kerüljön be).
 
 ## Fejlesztési terv (módosítható)
 
@@ -270,7 +274,17 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   görbén hibátlanul kiszámolta (0.60, 1001.80 → 1001.20). Kód: `BacktestResult` új mező `double maxDrawdown`;
   `Backtester` a meglévő ciklusban követi a `peak`-et és a `maxDrawdown`-t. A felhasználó írta be (egy vessző
   lemaradt a recordból → Claude észrevette). `clean package` sikeres; `/backtest` → `maxDrawdown: 0.6000000000000227`.
-  Következő: a double kerekítési hiba kezelése.
+  Commit: „Add max drawdown to backtest result” (pusholva).
+- **Döntés (2026-10-02): `BigDecimal` minden ár és pénz helyett** (nem csak kerekítés a kimenetnél) – a felhasználó
+  választása („ahol lehet, profin”). Érintett: `Candle` (OHLC), `CandleRepository`, `RisingPriceStrategy`, `Fill`,
+  `ExecutionEngine`, `Portfolio`, `Backtester`, `BacktestResult`. Szabályok: Stringből/`valueOf`-fal létrehozni
+  (nem `new BigDecimal(double)`), `add/subtract/multiply`, összehasonlítás `compareTo`-val (nem `equals`).
+  Később eldöntendő: a DB-ben az árak tárolása (most REAL); a Databento fix pontos egészeket (1e-9) használ.
+- **Kész (2026-10-02): BigDecimal átállás** – a felhasználó kérésére **Claude írta át** a 8 fájlt (+ `BacktestController`:
+  `new BigDecimal("1000")`). Olvasás: `BigDecimal.valueOf(rs.getDouble(...))` (a REAL-ből; a `valueOf` a rövid alakot
+  adja, pl. 171.2). `RisingPriceStrategy.previousClose` kezdőértéke `null` (= még nincs előző gyertya, a régi 0 helyett).
+  `ExecutionEngine` változatlan (a `candle.close()` már BigDecimal). Build sikeres; Claude a jar-t a 8099-es porton
+  kipróbálta: `pnl 1.2`, `maxDrawdown 0.6`, equity pontos – kerekítési hiba eltűnt. Commit: „Use BigDecimal for prices and money” (pusholva).
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

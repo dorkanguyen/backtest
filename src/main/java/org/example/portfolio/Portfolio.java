@@ -3,32 +3,34 @@ package org.example.portfolio;
 import org.example.execution.Fill;
 import org.example.order.Side;
 
+import java.math.BigDecimal;
+
 public class Portfolio {
 
-    private double cash;
+    private BigDecimal cash;
     private int position = 0;
 
-    public Portfolio(double startingCash) {
+    public Portfolio(BigDecimal startingCash) {
         this.cash = startingCash;
     }
 
     public void apply(Fill fill) {
-        double amount = fill.quantity() * fill.price();
+        BigDecimal amount = fill.price().multiply(BigDecimal.valueOf(fill.quantity()));
 
         if (fill.side() == Side.BUY) {
-            cash = cash - amount;
+            cash = cash.subtract(amount);
             position = position + fill.quantity();
         } else {
-            cash = cash + amount;
+            cash = cash.add(amount);
             position = position - fill.quantity();
         }
     }
 
-    public double equity(double currentPrice) {
-        return cash + position * currentPrice;
+    public BigDecimal equity(BigDecimal currentPrice) {
+        return cash.add(currentPrice.multiply(BigDecimal.valueOf(position)));
     }
 
-    public double getCash() {
+    public BigDecimal getCash() {
         return cash;
     }
 

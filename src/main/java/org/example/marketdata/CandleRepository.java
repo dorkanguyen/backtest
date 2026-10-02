@@ -2,6 +2,7 @@ package org.example.marketdata;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -26,10 +27,10 @@ public class CandleRepository {
                         rs.getLong("id"),
                         rs.getString("symbol"),
                         LocalDateTime.parse(rs.getString("open_time")),
-                        rs.getDouble("open"),
-                        rs.getDouble("high"),
-                        rs.getDouble("low"),
-                        rs.getDouble("close"),
+                        BigDecimal.valueOf(rs.getDouble("open")),
+                        BigDecimal.valueOf(rs.getDouble("high")),
+                        BigDecimal.valueOf(rs.getDouble("low")),
+                        BigDecimal.valueOf(rs.getDouble("close")),
                         rs.getLong("volume")
                 )
         );

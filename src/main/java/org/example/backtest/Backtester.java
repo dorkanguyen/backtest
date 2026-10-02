@@ -8,19 +8,20 @@ import org.example.order.Side;
 import org.example.portfolio.Portfolio;
 import org.example.strategy.Strategy;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Backtester {
 
-    public BacktestResult run(List<Candle> candles, Strategy strategy, double startingCash) {
+    public BacktestResult run(List<Candle> candles, Strategy strategy, BigDecimal startingCash) {
         ExecutionEngine executionEngine = new ExecutionEngine();
         Portfolio portfolio = new Portfolio(startingCash);
         List<Fill> fills = new ArrayList<>();
-        List<Double> equityCurve = new ArrayList<>();
-        double finalEquity = startingCash;
-        double peak = startingCash;
-        double maxDrawdown = 0;
+        List<BigDecimal> equityCurve = new ArrayList<>();
+        BigDecimal finalEquity = startingCash;
+        BigDecimal peak = startingCash;
+        BigDecimal maxDrawdown = BigDecimal.ZERO;
 
         for (Candle candle : candles) {
             int target = strategy.targetPosition(candle);
@@ -39,16 +40,15 @@ public class Backtester {
 
             finalEquity = portfolio.equity(candle.close());
             equityCurve.add(finalEquity);
-            if (finalEquity > peak) {
+            if (finalEquity.compareTo(peak) > 0) {
                 peak = finalEquity;
             }
-            double drawdown = peak - finalEquity;
-            if (drawdown > maxDrawdown) {
+            BigDecimal drawdown = peak.subtract(finalEquity);
+            if (drawdown.compareTo(maxDrawdown) > 0) {
                 maxDrawdown = drawdown;
             }
         }
 
-
-        return new BacktestResult(startingCash, finalEquity, finalEquity - startingCash, fills, equityCurve, maxDrawdown);
+        return new BacktestResult(startingCash, finalEquity, finalEquity.subtract(startingCash), fills, equityCurve, maxDrawdown);
     }
 }

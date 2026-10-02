@@ -341,4 +341,27 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   `google_checks.xml`-je, egyetlen módosítással: Indentation basicOffset/caseIndent/arrayInitIndent 4,
   braceAdjustment 0, throwsIndent/lineWrappingIndentation 8. Plugin: `maven-checkstyle-plugin` 3.6.0 + checkstyle
   14.3.0 dependency. Az IntelliJ CheckStyle-IDEA plugin 12.1.0-t használ → át kell állítani 14.3.0-ra.
+  **2) kész (nincs commitolva):** plugin a `pom.xml`-ben (`validate` fázis, `consoleOutput`, `violationSeverity=warning`
+  – enélkül „0 violations”-t ír, mert a Google config minden hibát warningnak jelöl –, `failOnViolation=false`).
+  Első futás: **42 figyelmeztetés**: 29 CustomImportOrder (Google: egy import blokk, ASCII sorrend; az IntelliJ alapból
+  a `java.*`-t külön a végére teszi), 7 LineLength, 4 MissingJavadocMethod (3 Spring-konstruktor + `main`),
+  2 EmptyLineSeparator. **Döntés:** előbb az IntelliJ kódstílus Google-re állítása, különben újra rossz importokat ír.
+  Elkészítve: `config/intellij/backtest-google-style.xml` (google/styleguide `intellij-java-google-style.xml`, commit
+  505ba68, csak a Java/egyéb behúzás 4/8). **Kész:** a felhasználó importálta (előbb IDE-szintű sémaként, majd „Copy to
+  Project...”) → `.idea/codeStyles/Project.xml` + `codeStyleConfig.xml` (`USE_PER_PROJECT_SETTINGS`), nincs gitignore-olva,
+  a Gitbe kerül. (Az IntelliJ csak az alapértéktől eltérő beállításokat menti – a 4/8 behúzás alapérték, ezért nem látszik.)
+  Az első Reformat rossz lett (folytatósor 4, `@param` oszlopba igazítva, egysoros Javadoc 3 sorra bontva – a 2018-as
+  Google XML egyes opcióit az új IntelliJ nem vette át) → `.editorconfig` `[*.java]`: `ij_continuation_indent_size = 8`,
+  `ij_java_align_multiline_records = false`, `ij_java_doc_align_param_comments = false`,
+  `ij_java_doc_do_not_wrap_if_one_line = true` (az `ij_` opciók felülírják a kódstílust); `git restore src/main/java`,
+  majd újra Reformat (+ Optimize imports) → jó. Checkstyle: 42 → **6** (4 MissingJavadocMethod: 3 Spring-konstruktor +
+  `main`; 2 LineLength: SQL stringek a `CandleRepository`-ban – az IntelliJ stringet nem tör).
+  **3) kész:** Claude beírta a 4 Javadocot, az SQL-t Java **text block**-ba (`"""`) tette, `failOnViolation=true`
+  (a build mostantól megáll szabálysértésnél – rögtön el is kapott egy 101 karakteres Javadoc sort). Build: **0 violation**,
+  BUILD SUCCESS. 8099-es porton kipróbálva: count 10, `/candles` 10 db időrendben, `/backtest` pnl −0.80, maxDrawdown 1.60,
+  totalCommission 2.00 – változatlan. A POST (INSERT) nincs kipróbálva (ne kerüljön próbasor a DB-be).
+  Commit: „Add Checkstyle with Google style and IntelliJ code style” (pusholva). **Checkstyle kész.**
+- **Következő lépés:** az IntelliJ CheckStyle-IDEA plugin átállítása 14.3.0-ra + a `config/checkstyle/checkstyle.xml`
+  aktiválása benne (hogy az IntelliJ is ugyanazt jelezze, mint a Maven); utána döntés: frontend (A, Claude ajánlja) vs.
+  Databento (B). Nyitott apróság: equityCurve scale egységesítése.
 

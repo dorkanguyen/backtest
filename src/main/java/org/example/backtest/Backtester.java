@@ -13,8 +13,24 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Runs a strategy over historical candles and measures the result.
+ *
+ * <p>For each candle the strategy returns a target position. The difference to the current
+ * position becomes an {@link Order}, the {@link ExecutionEngine} fills it, and the
+ * {@link Portfolio} is updated. The strategy never trades directly.
+ */
 public class Backtester {
 
+    /**
+     * Runs one backtest.
+     *
+     * @param candles candles in time order (oldest first)
+     * @param strategy a new strategy instance (strategies keep state between candles)
+     * @param startingCash cash at the start
+     * @param commissionModel how commission is charged on each fill
+     * @return the result with PnL, fills, equity curve and max drawdown
+     */
     public BacktestResult run(List<Candle> candles, Strategy strategy, BigDecimal startingCash, CommissionModel commissionModel) {
         ExecutionEngine executionEngine = new ExecutionEngine(commissionModel);
         Portfolio portfolio = new Portfolio(startingCash);

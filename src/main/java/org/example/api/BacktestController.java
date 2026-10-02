@@ -13,6 +13,7 @@ import org.example.execution.PerShareCommission;
 import java.math.BigDecimal;
 import java.util.List;
 
+/** REST endpoint that runs a backtest on the candles stored in the database. */
 @RestController
 public class BacktestController {
 
@@ -22,6 +23,14 @@ public class BacktestController {
         this.candleRepository = candleRepository;
     }
 
+    /**
+     * Runs the {@link RisingPriceStrategy} on all stored candles.
+     *
+     * <p>Uses a starting cash of 1000 and a per-share commission of 0.005 (minimum 1.00).
+     * A new strategy is created for every request, because strategies keep state.
+     *
+     * @return the result with PnL, fills, equity curve and max drawdown
+     */
     @GetMapping("/backtest")
     public BacktestResult runBacktest() {
         List<Candle> candles = candleRepository.findAll();

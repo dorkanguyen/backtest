@@ -18,10 +18,10 @@ public class Portfolio {
         BigDecimal amount = fill.price().multiply(BigDecimal.valueOf(fill.quantity()));
 
         if (fill.side() == Side.BUY) {
-            cash = cash.subtract(amount);
+            cash = cash.subtract(amount).subtract(fill.commission());
             position = position + fill.quantity();
         } else {
-            cash = cash.add(amount);
+            cash = cash.add(amount).subtract(fill.commission());
             position = position - fill.quantity();
         }
     }

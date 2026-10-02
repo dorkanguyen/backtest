@@ -298,6 +298,14 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   kapja a modellt; 5) `Portfolio` mindkét irányban levonja; 6) `Backtester` továbbadja, `BacktestResult` + `totalCommission`,
   `BacktestController` hozza létre a modellt. Várt: pnl −0.80, maxDrawdown 1.60, totalCommission 2.00, equity
   1000, 1000, 999, 999.7, 1000.4, 1000.8, 999.2 ×4. **Folytatáskor megkérdezni: Claude írja be, vagy a felhasználó?**
+  → **A felhasználó írja be** (2026-10-02). Két csomag: (A) a két új fájl (`CommissionModel`, `PerShareCommission`) –
+  önmagában is lefordul; (B) a 6 meglévő fájl módosítása (`Fill`, `ExecutionEngine`, `Portfolio`, `Backtester`,
+  `BacktestResult`, `BacktestController`) – ezek csak együtt fordulnak le.
+- **Kész (2026-10-02): jutalék.** Mindkét csomagot a felhasználó írta be, hibátlanul (Claude ellenőrizte, build sikeres).
+  Claude a 8099-es porton kipróbálta: pnl **−0.80**, maxDrawdown **1.60**, totalCommission **2.00**, fill-enként
+  `commission: 1.00` – pontosan a várt. Tanulság a felhasználónak: jutalékkal a RisingPriceStrategy veszteséges.
+  Kozmetikai: az equityCurve-ben vegyes tizedesjegy (1000.0 vs 999.00) – a BigDecimal megjegyzi a scale-t;
+  később egységesíteni (pl. `setScale(2)` a kimenetnél vagy a frontend formáz). Commit: „Add commission model to execution” (pusholva).
 - (Régi jegyzet:) `candles` tábla: `schema.sql` (`CREATE TABLE IF NOT EXISTS`, id/symbol/open_time TEXT ISO-8601/
   open/high/low/close REAL/volume INTEGER) + `spring.sql.init.mode=always` az `application.properties`-be.
 - (Régi jegyzet:) az első tábla létrehozása (pl. `schema.sql`;

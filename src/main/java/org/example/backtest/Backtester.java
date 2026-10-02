@@ -7,6 +7,7 @@ import org.example.order.Order;
 import org.example.order.Side;
 import org.example.portfolio.Portfolio;
 import org.example.strategy.Strategy;
+import org.example.execution.CommissionModel;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -14,14 +15,15 @@ import java.util.List;
 
 public class Backtester {
 
-    public BacktestResult run(List<Candle> candles, Strategy strategy, BigDecimal startingCash) {
-        ExecutionEngine executionEngine = new ExecutionEngine();
+    public BacktestResult run(List<Candle> candles, Strategy strategy, BigDecimal startingCash, CommissionModel commissionModel) {
+        ExecutionEngine executionEngine = new ExecutionEngine(commissionModel);
         Portfolio portfolio = new Portfolio(startingCash);
         List<Fill> fills = new ArrayList<>();
         List<BigDecimal> equityCurve = new ArrayList<>();
         BigDecimal finalEquity = startingCash;
         BigDecimal peak = startingCash;
         BigDecimal maxDrawdown = BigDecimal.ZERO;
+        BigDecimal totalCommission = BigDecimal.ZERO;
 
         for (Candle candle : candles) {
             int target = strategy.targetPosition(candle);
@@ -36,6 +38,7 @@ public class Backtester {
                 Fill fill = executionEngine.execute(order, candle);
                 portfolio.apply(fill);
                 fills.add(fill);
+                totalCommission = totalCommission.add(fill.commission());
             }
 
             finalEquity = portfolio.equity(candle.close());
@@ -49,6 +52,7 @@ public class Backtester {
             }
         }
 
-        return new BacktestResult(startingCash, finalEquity, finalEquity.subtract(startingCash), fills, equityCurve, maxDrawdown);
+        return new BacktestResult(startingCash, finalEquity, finalEquity.subtract(startingCash), fills, equityCurve, maxDrawdown,
+                totalCommission);
     }
 }

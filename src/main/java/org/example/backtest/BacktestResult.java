@@ -11,6 +11,7 @@ public record BacktestResult(
         BigDecimal pnl,
         List<Fill> fills,
         List<BigDecimal> equityCurve,
-        BigDecimal maxDrawdown
+        BigDecimal maxDrawdown,
+        BigDecimal totalCommission
 ) {
 }

@@ -524,6 +524,24 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   Nasdaq könyve (nem a teljes piac / NBBO), a fix képlet nincs az adathoz kalibrálva, a mérés a jövőbeli mid-hez
   hasonlít (ez a mid-nek kedvez, ha az ár nem mozdul). Továbblépés lehet: kalibrálás adatból, kötések bevonása.
   Nincs commitolva.
+- **Döntés (2026-10-03): a fair price stratégia vételre ÉS eladásra (long + short) is működik** – célpozíció
+  −max…+max (a `Portfolio` már kezeli a negatív pozíciót).
+- **Elmagyarázva (2026-10-03): market order (taker) vs. limit order (maker).** A mid/microprice mindig a bid és az ask
+  között van → aki market orderrel vesz, az ask-on vesz (drágábban a fair price-nál), aki elad, a bid-en ad el →
+  minden kötés a fél spreadbe + jutalékba kerül; a pár centes előrejelzés ezt szinte biztosan nem termeli ki. A
+  market makerek limit megbízással a spreadet megkeresik (de sorban állás, nem biztos teljesülés → nehezebb szimulálni).
+- **Folyamatban – „(a)” eseményalapú backtest, javasolt kétkörös terv (a 2. kérdésre a felhasználó még NEM válaszolt
+  kifejezetten, folytatáskor röviden megerősíteni):** **1. kör market orderrel** (megnézni a valódi adaton, hogy
+  tényleg veszít-e; motor-ellenőrzés): 1) `MarketEventStore.replay(symbol, from, to, Consumer)` olvasó metódus;
+  2) `OrderBookStrategy` interfész (eseményenként) + `FairPriceStrategyParams` record + `FairPriceStrategy`;
+  3) `BookExecutionEngine` (market order a könyvből teljesül, több árszinten át „sétálva”); 4) `EventBacktester` +
+  eredmény (equity másodpercenként mintavételezve, nem minden eseménynél); 5) REST endpoint JSON paraméterekkel.
+  **2. kör: limit megbízások (market making)** erre építve. A régi gyertyás backtest megmarad mellette.
+  Meglévő osztályok (újrahasznosításhoz): `Order(symbol, Side, int quantity)`, `Fill(symbol, side, quantity,
+  BigDecimal price, BigDecimal commission, LocalDateTime time)`, `Portfolio` (BigDecimal cash, int position,
+  `apply(Fill)`, `equity(price)`), `CommissionModel`/`PerShareCommission`, `Backtester`/`BacktestResult` (gyertyás).
+  Ár átváltás: egész (1/10000) → `BigDecimal.valueOf(price, 4)`. Kód-írás: a felhasználó mostanában Claude-ot kéri
+  meg a beírásra („te írd be”), magyarázattal; előtte mindig rákérdezni.
 - ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
 - **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
   kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát

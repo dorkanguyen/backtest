@@ -470,6 +470,23 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   könyv soha nem „keresztezett” (bid < ask), spread 1–4 cent (10:00: 278.55/278.59). **Tanulságok:** a könyvet order
   id alapján kell építeni (a C-üzenet ára más lehet – első próbánál ár szerint építve hibás lett); a P (TRADE) oldala
   mindig 'B' (Nasdaq-sajátosság, nem használható). Nem kezelt: Q (nyitó/záró aukció kötései), B (törölt kötés) – később.
+- **Kész (2026-10-03): SQLite mentés + importer** (döntés: **(a)** külön `main`-es CLI program, Spring nélkül – a
+  felhasználó választása; Claude írta be). `marketdata.MarketEventStore` (interfész, `AutoCloseable`: `deleteBetween`,
+  `save`, `close`), `marketdata.SqliteMarketEventStore` (sima JDBC `DriverManager`, `PRAGMA journal_mode=WAL`,
+  `synchronous=NORMAL`, autocommit ki, 10 000-es batch + commit; tábla `market_events` (ts, symbol, type, order_id,
+  side, price, quantity – nincs id, a rowid őrzi a beszúrási sorrendet → azonos ts-nél `ORDER BY ts, rowid`), index
+  `(symbol, ts)`; SQLException → `IllegalStateException`), `marketdata.itch.ItchImporter` (args: ITCH fájl, dátum
+  yyyy-mm-dd, DB fájl; a 22 részvény `SYMBOLS` konstans; előbb törli az adott nap eseményeit → újrafuttatható).
+  Checkstyle: a text block nyitó `"""` új sorba kell (TextBlockGoogleStyleFormatting).
+  **Próbaimport (Claude, ideiglenes DB, utána törölve):** 67 240 192 esemény **341 s** alatt, **4,57 GB** (a becslés
+  4,6 volt); típusonkénti darabszám egyezik; `symbol='AAPL'` indexes lekérdezés 0,01 s. `deleteBetween` kis
+  próba-DB-n ellenőrizve. Megjegyzés: WSL-ből a `/mnt/c`-n lévő DB teljes olvasása nagyon lassú (count 390 s) – nem
+  a DB hibája. **Valódi import kész (2026-10-03, a felhasználó kérésére Claude futtatta a terminálból):**
+  `C:/Users/kimdo/market-data/market-data.db`, 4,57 GB, 67 240 192 sor (AAPL 2 856 929, TTWO 99 757 – egyezik a
+  korábbi mérésekkel). Most 7335 s-ig tartott (a próba 341 s), mert a laptop közben többször alvó/standby módba ment
+  (Windows eseménynapló: Kernel-Power 42/506/507) → hosszú futásnál a gép ne aludjon el (töltő, energiagazdálkodás).
+  IntelliJ-ből futtatás: `ItchImporter` ▶ → Edit Configurations → Program arguments:
+  `<itch.gz> <yyyy-mm-dd> C:/Users/kimdo/market-data/market-data.db`. Nincs commitolva.
 - ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
 - **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
   kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát

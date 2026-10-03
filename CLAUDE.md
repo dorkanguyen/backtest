@@ -461,6 +461,15 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   automatikus) UTC epoch ns-ben; 'A' és 'F' (azonos első 36 bájt) → `MarketEvent` ADD; `readUnsigned(bytes, offset,
   length)` általános big-endian olvasó. Kipróbálva a teljes napon (91 s): 18 891 770 ADD esemény a 22 részvényre;
   AAPL első ajánlata 04:00:00.128 NY = 09:00 UTC (pre-market nyitás), ár $278.10 – hihető. Nincs commitolva.
+- **Kész (2026-10-03): `ItchParser` 3. rész – teljes eseménynapló** (döntés: **(1)** a parser jegyzi az élő
+  ajánlatokat, a felhasználó választása; Claude írta be). `HashMap<Long, LiveOrder>` (private record: symbol, side,
+  price, quantity, `withQuantity`); E/C → EXECUTE (C: a kötés ára, eltérhet az ajánlat árától!), X → CANCEL
+  (részleges), D → DELETE (a maradék mennyiséggel), U → DELETE + ADD (új order id), P → TRADE (orderId 0).
+  **Ellenőrizve a teljes napon (122 s):** 67 240 192 esemény = pontosan a várt (ADD 33,2M, DELETE 31,9M,
+  EXECUTE 1,6M, TRADE 0,49M, CANCEL 45k); időrend hibátlan; nap végén 0 élő ajánlat; az order id szerint épített AAPL
+  könyv soha nem „keresztezett” (bid < ask), spread 1–4 cent (10:00: 278.55/278.59). **Tanulságok:** a könyvet order
+  id alapján kell építeni (a C-üzenet ára más lehet – első próbánál ár szerint építve hibás lett); a P (TRADE) oldala
+  mindig 'B' (Nasdaq-sajátosság, nem használható). Nem kezelt: Q (nyitó/záró aukció kötései), B (törölt kötés) – később.
 - ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
 - **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
   kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát

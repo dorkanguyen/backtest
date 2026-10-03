@@ -433,6 +433,17 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   kötés (EXECUTE/TRADE) vs. visszavonás; miért kell mindkettő (kötés = tényleges ár, könyv = kereslet/kínálat → fair price).
   Import-lánc terve: `ItchReader` (üzenetekre darabol) → `ItchParser` (csak a 20 részvény) → `MarketEvent` →
   `MarketEventStore` (SQLite).
+- **Kész (2026-10-03): `marketdata.itch.ItchReader`** (a felhasználó írta be; először a `marketdata`-ba került →
+  `Alt+Enter` → Move to package): gzip menet közbeni kitömörítés, `byte[] nextMessage()` (null = fájl vége),
+  `AutoCloseable`. Elmagyarázva: bájt, bináris vs. szöveg, hossz-előtag, big-endian, stream-„csövek”, `throws`,
+  EOF, miért külön `itch` package (forrás-specifikus kód vs. közös modell; később `iex/`, `alpaca/`).
+  **Mérés (Claude, scratchpad-program, nem a projektben):** a teljes 2025-12-09 fájl 87 s alatt, 589 560 010 üzenet,
+  18,7 GB kitömörítve; A 213M, F 2,9M, D 205M, U 134M, X 8,9M, E 13,3M, C 0,4M, P 6,2M, R 12 111 (értékpapír).
+  Tanulság (elmagyarázva): ~minden 10. ajánlatból lesz kötés (market makerek folyton módosítanak).
+- **Kész (2026-10-03): `marketdata.itch.ItchParser` 1. rész** (a felhasználó kérésére Claude írta be): csak az „R”
+  (Stock Directory) üzenet → `String[65_536] symbols` (stock locate → symbol), `symbolOf(int)`, `switch` nyíllal,
+  `readUnsignedShort` (`& 0xFF`, `<< 8`). Ezen a napon pl. AAPL=24, MSFT=7131, NVDA=7705 (a számok naponta változhatnak).
+  Build sikeres. Nincs commitolva (ItchReader + ItchParser).
 - ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
 - **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
   kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát

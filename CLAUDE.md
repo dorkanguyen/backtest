@@ -444,6 +444,23 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   (Stock Directory) üzenet → `String[65_536] symbols` (stock locate → symbol), `symbolOf(int)`, `switch` nyíllal,
   `readUnsignedShort` (`& 0xFF`, `<< 8`). Ezen a napon pl. AAPL=24, MSFT=7131, NVDA=7705 (a számok naponta változhatnak).
   Build sikeres. Nincs commitolva (ItchReader + ItchParser).
+- **Mérés (2026-10-03, 2025-12-09 nap): események részvényenként** (A+F+D+X+E+C+P, U=2 esemény). Összesen 717M.
+  A javasolt 20 (AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, AVGO, AMD, INTC, QCOM, AMAT, NFLX, COST, PEP, ADBE, CSCO,
+  SBUX, QQQ, SPY) = **64,2M esemény**; legaktívabb: QQQ 15,2M, SPY 8,9M, NVDA 6,9M, GOOGL 6,7M, TSLA 6,2M; legkevesebb
+  AMAT 0,3M. A 40 legaktívabb együtt 138M (sok tőkeáttételes/kripto ETF: SQQQ, TQQQ, SOXL, NVDL, IBIT…).
+  **SQLite méret (mérve, 1M soros próba):** ~46 bájt/sor index nélkül, **~68 bájt/sor** `(symbol, ts)` indexszel
+  → 20 részvény ≈ **4,4 GB/nap** (a korábbi 2–4 GB-os becslés alacsony volt); 40 legaktívabb ≈ 9,4 GB/nap.
+- **Döntés (2026-10-03): 22 részvény** = a fenti 20 + **VOO** (Vanguard S&P 500 ETF, 3,0M esemény) + **TTWO**
+  (Take-Two Interactive, 0,1M). A felhasználó a „Vanguard S&P 500 **Dist**”-et kérte: ez az európai UCITS változat
+  (VUSA/VUSD, London/Amszterdam) – a Nasdaq ITCH-ben NINCS benne (ellenőrizve) → helyette az amerikai VOO.
+  Összesen ~67,2M esemény/nap ≈ 4,6 GB SQLite. Elmagyarázva: a tárhely nem nő magától, csak minden további letöltött
+  tőzsdei nappal (~12 GB/nap nyers + DB); quant cégtípusok (market maker/HFT, stat arb, faktor), a projekt célja a tanulás.
+- **Kész (2026-10-03): `ItchParser` 2. rész – Add Order** (Claude írta be, a felhasználó kérésére). Konstruktor:
+  `ItchParser(LocalDate tradingDate, Set<String> wantedSymbols, Consumer<MarketEvent> listener)`; `wanted[]` boolean
+  tömb (locate → kell-e), `midnightNanos` = a nap éjfele New Yorkban (`ZoneId America/New_York`, téli/nyári idő
+  automatikus) UTC epoch ns-ben; 'A' és 'F' (azonos első 36 bájt) → `MarketEvent` ADD; `readUnsigned(bytes, offset,
+  length)` általános big-endian olvasó. Kipróbálva a teljes napon (91 s): 18 891 770 ADD esemény a 22 részvényre;
+  AAPL első ajánlata 04:00:00.128 NY = 09:00 UTC (pre-market nyitás), ár $278.10 – hihető. Nincs commitolva.
 - ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
 - **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
   kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát

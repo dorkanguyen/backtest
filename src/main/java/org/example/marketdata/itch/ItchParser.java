@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import org.example.marketdata.BookSide;
@@ -17,6 +19,13 @@ import org.example.marketdata.MarketEvent;
  * number (the stock locate), so the parser remembers which number belongs to which symbol from
  * the Stock Directory messages sent at the start of the day. Only the requested symbols produce
  * events; all other messages are skipped.
+ *
+ * <p>Execute, cancel and delete messages only contain the order id, so the parser also keeps the
+ * live orders and fills in the symbol, side and price of every event. An order replace becomes
+ * a {@link EventType#DELETE} of the old order followed by an {@link EventType#ADD} of the new one.
+ * The price of an {@link EventType#EXECUTE} is the price the trade happened at, which can differ
+ * from the price of the order, so a book must be rebuilt by order id. The side of a
+ * {@link EventType#TRADE} is not meaningful: Nasdaq always sends it as buy.
  */
 public class ItchParser {
 
@@ -28,6 +37,7 @@ public class ItchParser {
 
     private final String[] symbols = new String[MAX_STOCK_LOCATE];
     private final boolean[] wanted = new boolean[MAX_STOCK_LOCATE];
+    private final Map<Long, LiveOrder> liveOrders = new HashMap<>();
     private final Set<String> wantedSymbols;
     private final long midnightNanos;
     private final Consumer<MarketEvent> listener;
@@ -56,8 +66,14 @@ public class ItchParser {
         switch (message[0]) {
             case 'R' -> parseStockDirectory(message);
             case 'A', 'F' -> parseAddOrder(message);
+            case 'E' -> parseExecuted(message, false);
+            case 'C' -> parseExecuted(message, true);
+            case 'X' -> parseCancel(message);
+            case 'D' -> parseDelete(message);
+            case 'U' -> parseReplace(message);
+            case 'P' -> parseTrade(message);
             default -> {
-                // Other message types are not handled yet.
+                // Other message types do not change the order book of a stock.
             }
         }
     }
@@ -70,6 +86,15 @@ public class ItchParser {
      */
     public String symbolOf(int stockLocate) {
         return symbols[stockLocate];
+    }
+
+    /**
+     * Returns how many orders are currently in the books of the wanted symbols.
+     *
+     * @return number of live orders
+     */
+    public int liveOrderCount() {
+        return liveOrders.size();
     }
 
     private void parseStockDirectory(byte[] message) {
@@ -85,13 +110,110 @@ public class ItchParser {
         if (!wanted[stockLocate]) {
             return;
         }
-        long timestamp = midnightNanos + readUnsigned(message, 5, 6);
         long orderId = readUnsigned(message, 11, 8);
         BookSide side = message[19] == 'B' ? BookSide.BID : BookSide.ASK;
         long quantity = readUnsigned(message, 20, 4);
         long price = readUnsigned(message, 32, 4);
-        listener.accept(new MarketEvent(timestamp, symbols[stockLocate], EventType.ADD, orderId,
-                side, price, quantity));
+        addOrder(timestampOf(message), orderId,
+                new LiveOrder(symbols[stockLocate], side, price, quantity));
+    }
+
+    /** Order Executed ('E') and Order Executed With Price ('C'). */
+    private void parseExecuted(byte[] message, boolean withPrice) {
+        if (!wanted[readUnsignedShort(message, 1)]) {
+            return;
+        }
+        long orderId = readUnsigned(message, 11, 8);
+        LiveOrder order = liveOrders.get(orderId);
+        if (order == null) {
+            return;
+        }
+        long executed = readUnsigned(message, 19, 4);
+        long price = withPrice ? readUnsigned(message, 32, 4) : order.price();
+        emit(timestampOf(message), EventType.EXECUTE, orderId, order, price, executed);
+        reduceOrder(orderId, order, executed);
+    }
+
+    private void parseCancel(byte[] message) {
+        if (!wanted[readUnsignedShort(message, 1)]) {
+            return;
+        }
+        long orderId = readUnsigned(message, 11, 8);
+        LiveOrder order = liveOrders.get(orderId);
+        if (order == null) {
+            return;
+        }
+        long canceled = readUnsigned(message, 19, 4);
+        emit(timestampOf(message), EventType.CANCEL, orderId, order, order.price(), canceled);
+        reduceOrder(orderId, order, canceled);
+    }
+
+    private void parseDelete(byte[] message) {
+        if (!wanted[readUnsignedShort(message, 1)]) {
+            return;
+        }
+        deleteOrder(timestampOf(message), readUnsigned(message, 11, 8));
+    }
+
+    private void parseReplace(byte[] message) {
+        if (!wanted[readUnsignedShort(message, 1)]) {
+            return;
+        }
+        long timestamp = timestampOf(message);
+        LiveOrder old = deleteOrder(timestamp, readUnsigned(message, 11, 8));
+        if (old == null) {
+            return;
+        }
+        long newOrderId = readUnsigned(message, 19, 8);
+        long quantity = readUnsigned(message, 27, 4);
+        long price = readUnsigned(message, 31, 4);
+        addOrder(timestamp, newOrderId, new LiveOrder(old.symbol(), old.side(), price, quantity));
+    }
+
+    /** Trade ('P'): an execution against an order that was not visible in the book. */
+    private void parseTrade(byte[] message) {
+        int stockLocate = readUnsignedShort(message, 1);
+        if (!wanted[stockLocate]) {
+            return;
+        }
+        BookSide side = message[19] == 'B' ? BookSide.BID : BookSide.ASK;
+        long quantity = readUnsigned(message, 20, 4);
+        long price = readUnsigned(message, 32, 4);
+        listener.accept(new MarketEvent(timestampOf(message), symbols[stockLocate],
+                EventType.TRADE, 0, side, price, quantity));
+    }
+
+    private void addOrder(long timestamp, long orderId, LiveOrder order) {
+        liveOrders.put(orderId, order);
+        emit(timestamp, EventType.ADD, orderId, order, order.price(), order.quantity());
+    }
+
+    /** Removes an order completely and returns it, or returns {@code null} if it is unknown. */
+    private LiveOrder deleteOrder(long timestamp, long orderId) {
+        LiveOrder order = liveOrders.remove(orderId);
+        if (order != null) {
+            emit(timestamp, EventType.DELETE, orderId, order, order.price(), order.quantity());
+        }
+        return order;
+    }
+
+    private void reduceOrder(long orderId, LiveOrder order, long amount) {
+        long remaining = order.quantity() - amount;
+        if (remaining > 0) {
+            liveOrders.put(orderId, order.withQuantity(remaining));
+        } else {
+            liveOrders.remove(orderId);
+        }
+    }
+
+    private void emit(long timestamp, EventType type, long orderId, LiveOrder order, long price,
+            long quantity) {
+        listener.accept(new MarketEvent(timestamp, order.symbol(), type, orderId, order.side(),
+                price, quantity));
+    }
+
+    private long timestampOf(byte[] message) {
+        return midnightNanos + readUnsigned(message, 5, 6);
     }
 
     private static int readUnsignedShort(byte[] bytes, int offset) {
@@ -105,5 +227,13 @@ public class ItchParser {
             value = (value << 8) | (bytes[offset + i] & 0xFF);
         }
         return value;
+    }
+
+    /** An order that is currently in the book, with its remaining quantity. */
+    private record LiveOrder(String symbol, BookSide side, long price, long quantity) {
+
+        LiveOrder withQuantity(long newQuantity) {
+            return new LiveOrder(symbol, side, price, newQuantity);
+        }
     }
 }

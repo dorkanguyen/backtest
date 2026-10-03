@@ -513,6 +513,17 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   **Kipróbálva a DB-ből** (AAPL, 2 856 929 esemény, `ORDER BY ts, rowid`, ~55 s főleg DB-olvasás): 10:00 278.55×168 /
   278.59×173, 12:00 277.97/278.00, 15:59 276.95×1860 / 276.96×100 – egyezik; soha nem keresztezett; nap végén üres.
   Nincs commitolva. Következő: `FairPriceModel` (Mid, Micro, MultiLevel), utána események olvasása a store-ból.
+- **Kész (2026-10-03): `org.example.fairprice`** (döntések: **double** a fair price-hoz – becslés, nem pénz; a pénz
+  marad BigDecimal, a tőzsdei ár egész; **új package** – a felhasználó választása; Claude írta be): `FairPriceModel`
+  interfész (`OptionalDouble fairPrice(OrderBook)`, dollárban, üres ha egyoldalú a könyv), `MidPrice`,
+  `MultiLevelPrice(int levels)` (fordított súlyozás N szint összdarabjával; levels < 1 → IllegalArgumentException),
+  `MicroPrice extends MultiLevelPrice` (= 1 szint). `PriceLevel` kapott `UNITS_PER_DOLLAR` + `priceInDollars()`.
+  **Mérés (scratchpad):** 9:35–15:55 másodpercenként, RMSE a 1 s / 10 s múlva lévő mid-hez (cent):
+  AAPL 1s mid 1.467 / micro 1.535 / multi5 1.467; NVDA ~egyforma (1.628–1.638); QQQ micro a legjobb (2.148 vs mid
+  2.158). **Tanulság: a különbségek aprók és vegyesek** – a microprice nem automatikusan jobb. Lehetséges okok: csak a
+  Nasdaq könyve (nem a teljes piac / NBBO), a fix képlet nincs az adathoz kalibrálva, a mérés a jövőbeli mid-hez
+  hasonlít (ez a mid-nek kedvez, ha az ár nem mozdul). Továbblépés lehet: kalibrálás adatból, kötések bevonása.
+  Nincs commitolva.
 - ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
 - **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
   kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát

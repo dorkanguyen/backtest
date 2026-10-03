@@ -371,6 +371,71 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   IntelliJ-t): verzió fixen **14.1.0** (NEM „latest” – a Mavennel egyezzen), Scan Scope = Java + tesztek, aktív config
   „Backtest” = `$PROJECT_DIR$/config/checkstyle/checkstyle.xml` (PROJECT_RELATIVE) → `.idea/checkstyle-idea.xml`
   (a Gitbe kerül). Check Project → „no problems found”.
-- **Következő lépés:** commit; utána döntés: frontend (A, Claude ajánlja) vs. Databento (B).
+  Commitok: „Switch Checkstyle to 14.1.0 and share IntelliJ Checkstyle settings” + CLAUDE.md (pusholva).
+- **Döntés (2026-10-02): B – előbb Databento (Phase 6), a frontend utána.** Ok (Claude elmagyarázta, a felhasználó
+  elfogadta): a valódi adat átalakítja az adatmodellt (UTC nanoszekundumos idő, fix pontos árak 1e-9, trades/BBO),
+  a nagy adatmennyiség kihozza a backend gyengéit (SQLite, `findAll()` mindent memóriába), a kockázatos/ismeretlen
+  rész kerüljön előre, és valódi adaton értelmes a backtest. A frontend stabil adatmodellre épüljön.
+- **Phase 6 terve (vázlat):** 1) Databento fiók + API kulcs (a kulcsot SOHA ne illessze be a chatbe/kódba);
+  2) `DATABENTO_API_KEY` Windows környezeti változó; 3) első HTTP hívás a terminálból – előbb költség lekérdezése
+  (`metadata.get_cost`), csak utána letöltés; 4) kis mennyiségű **ohlcv-1m** valódi adat → a meglévő candle-backtest
+  valódi adaton (minimális modellváltozás); 5) Java-ból letöltés; utána trades/BBO.
+- **Databento ingyenesség (2026-10-02, Claude utánanézett):** a felhasználó **semennyit nem akar fizetni**.
+  Regisztrációkor **125 $ kredit** történelmi adatra, **6 hónapig** érvényes, egyszer jár. **Bankkártya kell** a
+  regisztrációhoz (csalásszűrés), de csak a krediten felül terhelnek. Havidíjas csomagok (199 $-tól) csak élő adathoz –
+  NEM kellenek. Védelem: 1) regisztráció után ELSŐKÉNT **havi költségkorlát** (Billing → spending limit, a lehető
+  legkisebb, ha lehet 0 $); 2) minden letöltés előtt árlekérdezés; 3) kis adatmennyiség.
+  Nagyságrendek: ohlcv-1m pár nap/hét → centek; trades/BBO 1–2 nap 1 részvény → pár $; mbp-10 → drága, csak később, kicsiben.
+- **Adatstratégia (2026-10-02):** hosszú távon sokféle adat kell (több részvény, hosszú időszak → robusztusság,
+  overfitting elkerülése). A 125 $ beosztása: előbb kis adattal megépíteni a rendszert (a kód symbol-független);
+  **minden letöltött adatot elmenteni a saját DB-be (soha ne fizessünk kétszer)**; olcsó gyertyából sokat, drága
+  order bookból keveset (néhány likvid részvény, néhány nap); a kreditet a 6 hónap lejárta előtt felhasználni.
+  A Databento-kreditet főleg order book / trades adatra tartogatni; gyertya később ingyenes forrásból is jöhet.
+  Licencfeltételeket regisztráció után megnézni.
+- **Több API (2026-10-02, elv):** később `MarketDataSource` interfész (mint `Strategy`, `CommissionModel`), pl.
+  `DatabentoSource` + egy ingyenes gyertya-forrás; mindegyik a mi `Candle`-ünkre alakít és a saját DB-be ment, a
+  backtest nem tudja, honnan jött az adat. Figyelni: eltérő adatok, időzóna (egységesen tárolni), split-korrigált árak
+  (ne keverjük), `source` oszlop a táblában, egy részvény egy időszakára egy forrás, felhasználási feltételek (ToS).
+  **Most még csak egy forrás (Databento)**; az interfész a második forrásnál jön.
+- **Kártya nélküli források (2026-10-03, Claude utánanézett és ellenőrizte, hogy elérhetők):**
+  1) **Nasdaq TotalView-ITCH 5.0 minták** – `https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/`, regisztráció nélkül,
+  a teljes Nasdaq order-by-order (L3) adat **egy-egy napra, minden részvényre** (pl. `S120825-v50.txt.gz` = 2025-12-08,
+  4–18 GB/nap tömörítve; régebbiek 2018–2019). Ebből bármely szinten (BBO, MBP-10) order book építhető. Bináris,
+  parser kell. Licenc: nyilvános minta – saját tanulásra/kutatásra; ne tegyük közzé (a repo később nyilvános lehet!).
+  2) **IEX HIST (DEEP/TOPS)** – ingyenes, regisztráció nélkül, az elmúlt 12 hónap bármely napja (JSON lista:
+  `https://iextrading.com/api/1.0/hist?date=YYYYMMDD`), pcap, ~12 GB/nap/feed. Csak az IEX tőzsde könyve (kis piaci
+  részesedés → vékony könyv). 3) **LOBSTER minták** – kész CSV, 10 szintes könyv, AAPL/AMZN/GOOG/INTC/MSFT,
+  egyetlen nap (2012-06-21), pár MB – a legkönnyebb kezdés. 4) **Alpaca** – ingyenes fiók kártya nélkül, API kulcs;
+  gyertyák sok részvényre, sok évre + historical trades/quotes (nem teljes order book).
+  Lemezen ~320 GB szabad (C:). Az adat NEM kerülhet a Gitbe (külön mappa, `.gitignore`).
+- **Döntés (2026-10-03): Nasdaq ITCH (a) + Java parser a projektben (A)** – a felhasználó választása. A Databento
+  és a kártya egyelőre NEM kell (az alábbi Databento-regisztrációs pont ezzel félretéve). Terv: 1 nap, ~20 likvid
+  részvény (pl. AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, AVGO, AMD, NFLX…) kiszűrése, order book rekonstrukció, mentés.
+  Nyers adat a projekten KÍVÜL: `C:\Users\kimdo\market-data\nasdaq-itch\` (nem Git, az IntelliJ se indexelje).
+  **Letöltve és ellenőrizve (2026-10-03):** `S120925-v50.txt.gz` = **2025-12-09** (kedd), 7 929 915 419 bájt; nincs
+  md5 a fájlhoz (a `.done` 404) → ellenőrzés: méret + `gzip -t`. (A 2025-11-28 félnapos kereskedés → kihagyva.)
+- **Döntés (2026-10-03): a tick/order book adat tárolása SQLite** (összehasonlítva: Parquet+DuckDB hibrid, PostgreSQL
+  (+TimescaleDB) – Claude a hibridet ajánlotta hosszú távra; a felhasználó az SQLite-ot választotta, tudva a
+  hátrányokat: nincs tömörítés → ~2–4 GB/nap/20 részvény becslés, egy nagy fájl, egyszerre egy író, batch írás kell).
+  **Három szabály, hogy később cserélhető legyen:** 1) **interfész** mögött (`MarketEventStore`, most
+  `SqliteMarketEventStore`, később pl. `ParquetMarketEventStore`); 2) **tiszta formátum**: idő = egész nanoszekundum,
+  ár = egész (ITCH: 4 tizedes, 170.0100 → 1700100); csak **eseményeket** mentünk (MBO-szerű: add/execute/cancel/delete),
+  nem 10 szintes képeket – a könyvet a backtest építi újra; 3) **külön DB-fájl** (`market-data.db` a `market-data`
+  mappában, nem a `backtest.db`). A nyers ITCH vagy az SQLite közül legalább egyet mindig megtartani.
+  Váltás később: újra-import a nyers fájlból, vagy DuckDB-vel SQLite → Parquet.
+  Hosszú távú profi felállás: Parquet a piaci adatnak, PostgreSQL az alkalmazás adatainak.
+- **Kész (2026-10-03): eseménymodell** a `marketdata` package-ben (a felhasználó írta be): `BookSide` enum
+  (BID/ASK – szándékosan NEM az `order.Side`, mert a marketdata a legalsó réteg, nem függhet az order-től),
+  `EventType` enum (ADD, EXECUTE, CANCEL, DELETE, TRADE; az ITCH Replace = DELETE + ADD), `MarketEvent` record
+  (`long timestamp` ns UTC epoch, `symbol`, `type`, `long orderId`, `side`, `long price` 1/10000 $, `long quantity`).
+  Közben: a fájl `Bookside.java` néven jött létre (kis s) → `Shift+F6`-tal átnevezve; az átnevezésnél elveszett a
+  `package` sor → visszaírva. Build sikeres, 0 Checkstyle hiba. Elmagyarázva: ajánlat (ADD, vár) vs. megtörtént
+  kötés (EXECUTE/TRADE) vs. visszavonás; miért kell mindkettő (kötés = tényleges ár, könyv = kereslet/kínálat → fair price).
+  Import-lánc terve: `ItchReader` (üzenetekre darabol) → `ItchParser` (csak a 20 részvény) → `MarketEvent` →
+  `MarketEventStore` (SQLite).
+- ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
+- **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
+  kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát
+  beállítása, API kulcs (soha ne a chatbe!), `DATABENTO_API_KEY` környezeti változó.
   Nyitott apróság: equityCurve scale egységesítése.
 

@@ -8,4 +8,15 @@ package org.example.marketdata.book;
  */
 public record PriceLevel(long price, long quantity) {
 
+    /** Number of price units in one dollar. */
+    public static final double UNITS_PER_DOLLAR = 10_000.0;
+
+    /**
+     * Returns the price in dollars, for example {@code 170.01}.
+     *
+     * @return the price in dollars
+     */
+    public double priceInDollars() {
+        return price / UNITS_PER_DOLLAR;
+    }
 }

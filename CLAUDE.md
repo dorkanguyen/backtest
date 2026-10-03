@@ -487,6 +487,32 @@ működő motort bővítik (az execution engine-t ekkor át kell majd alakítani
   (Windows eseménynapló: Kernel-Power 42/506/507) → hosszú futásnál a gép ne aludjon el (töltő, energiagazdálkodás).
   IntelliJ-ből futtatás: `ItchImporter` ▶ → Edit Configurations → Program arguments:
   `<itch.gz> <yyyy-mm-dd> C:/Users/kimdo/market-data/market-data.db`. Nincs commitolva.
+- **Végcél pontosítva (2026-10-03, a felhasználó):** a stratégia logikája Java-ban „beégetve”, a felhasználó (frontend
+  űrlapon) **csak paramétereket** ad meg (pl. fair price módszer: mid / microprice / többszintes + szintek száma,
+  vételi/eladási küszöb, max. pozíció, pozícióméret, részvény, időszak). Terv: paraméterek JSON → Java record
+  (pl. `FairPriceStrategyParams`) + validálás; `FairPriceModel` interfész (`MidPrice`, `MicroPrice`,
+  `MultiLevelPrice`), a választás paraméter; később paraméteroptimalizálás (túlillesztés veszélye!).
+  Sorrend: `OrderBook` (marketdata.book) → `FairPriceModel` → `FairPriceStrategy`.
+- Elmagyarázva (2026-10-03): bármely pillanat teljes könyve lekérdezhető (események visszajátszása reggeltől);
+  **microprice** = (bid × ask_db + ask × bid_db) / (bid_db + ask_db) – fordított súlyozás! AAPL 15:59 példa:
+  276.95×1860 / 276.96×100 → mid 276.955, microprice ≈ 276.9595 (a „logikus” súlyozás 276.9505, rossz irány).
+  Hogy melyik a jobb, a backtest méri meg.
+- **Tervezési elv (2026-10-03): ugyanaz a stratégia-kód fut backtestben és élesben** (a felhasználó kérdezte, lehet-e
+  később élőben futtatni). Csak az adatforrás (SQLite-visszajátszás ↔ élő adatfolyam) és a végrehajtás
+  (`ExecutionEngine` szimuláció ↔ bróker API) cserélődik. Ezért az **`OrderBook` eseményenként kap adatot**
+  (`apply(event)`), nem „egész napot tölt be”. A `Strategy` interfész egyszer át fog alakulni gyertyásról
+  eseményalapúra (pl. `onEvent(MarketEvent, OrderBook)`) – vállalt, tervezett lépés. Élő irány később:
+  **Alpaca paper trading** (játékpénz, ingyenes, kártya nélkül); élő teljes Nasdaq könyv fizetős; valódi pénznél
+  kockázati korlátok, vészleállítás, USA pattern day trader szabály (margin számla, 25 000 $).
+- **Kész (2026-10-03): `marketdata.book.OrderBook` + `PriceLevel`** (a felhasználó kérésére Claude írta be; a
+  felhasználó IntelliJ-ben már létrehozott egy üres `PriceLevel` sablont – azt Claude felülírta, tartalom nem veszett el).
+  Eseményenként: `apply(MarketEvent)`; két nyilvántartás: `orders` (HashMap order id → RestingOrder) és `bids`/`asks`
+  (`TreeMap` ár → összdarab; bids `Collections.reverseOrder()`); `bestBid()`/`bestAsk()` → `Optional<PriceLevel>`,
+  `bids(depth)`/`asks(depth)` → legjobb N szint; DELETE = `reduce(id, Long.MAX_VALUE)`; TRADE nem változtat; más
+  symbol eseménye → `IllegalArgumentException`. Checkstyle: enum-switch-hez is kell `default` (MissingSwitchDefault).
+  **Kipróbálva a DB-ből** (AAPL, 2 856 929 esemény, `ORDER BY ts, rowid`, ~55 s főleg DB-olvasás): 10:00 278.55×168 /
+  278.59×173, 12:00 277.97/278.00, 15:59 276.95×1860 / 276.96×100 – egyezik; soha nem keresztezett; nap végén üres.
+  Nincs commitolva. Következő: `FairPriceModel` (Mid, Micro, MultiLevel), utána események olvasása a store-ból.
 - ITCH fájlformátum (ellenőrizve): bináris, minden üzenet előtt 2 bájtos hossz (big-endian), a „.txt” név ellenére.
 - **Folyamatban (este folytatjuk):** a felhasználó még NEM regisztrált. Utolsó kérdés: mehet-e a Databento-regisztráció
   kártyával + költségkorláttal (vagy kártya nélküli alternatíva, akkor order book nélkül). Utána: költségkorlát

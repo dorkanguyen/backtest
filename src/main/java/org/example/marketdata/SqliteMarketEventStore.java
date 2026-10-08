@@ -3,8 +3,10 @@ package org.example.marketdata;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.function.Consumer;
 
 /**
  * Stores order book events in an SQLite database file.
@@ -21,6 +23,14 @@ public class SqliteMarketEventStore implements MarketEventStore {
             """
             INSERT INTO market_events (ts, symbol, type, order_id, side, price, quantity)
             VALUES (?, ?, ?, ?, ?, ?, ?)
+            """;
+
+    private static final String REPLAY_SQL =
+            """
+            SELECT ts, symbol, type, order_id, side, price, quantity
+            FROM market_events
+            WHERE symbol = ? AND ts >= ? AND ts < ?
+            ORDER BY ts, rowid
             """;
 
     private final Connection connection;
@@ -94,6 +104,30 @@ public class SqliteMarketEventStore implements MarketEventStore {
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Cannot save event " + event, e);
+        }
+    }
+
+    @Override
+    public void replay(String symbol, long fromInclusive, long toExclusive,
+            Consumer<MarketEvent> listener) {
+        try (PreparedStatement select = connection.prepareStatement(REPLAY_SQL)) {
+            select.setString(1, symbol);
+            select.setLong(2, fromInclusive);
+            select.setLong(3, toExclusive);
+            try (ResultSet rows = select.executeQuery()) {
+                while (rows.next()) {
+                    listener.accept(new MarketEvent(
+                            rows.getLong("ts"),
+                            rows.getString("symbol"),
+                            EventType.valueOf(rows.getString("type")),
+                            rows.getLong("order_id"),
+                            BookSide.valueOf(rows.getString("side")),
+                            rows.getLong("price"),
+                            rows.getLong("quantity")));
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Cannot replay events of " + symbol, e);
         }
     }
 

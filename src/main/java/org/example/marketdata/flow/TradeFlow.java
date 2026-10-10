@@ -3,10 +3,12 @@ package org.example.marketdata.flow;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.OptionalDouble;
 import java.util.OptionalLong;
 import org.example.marketdata.BookSide;
 import org.example.marketdata.EventType;
 import org.example.marketdata.MarketEvent;
+import org.example.marketdata.book.PriceLevel;
 
 /**
  * Tracks the recent trades of one symbol in a sliding time window.
@@ -25,6 +27,7 @@ public class TradeFlow {
     private long buyVolume;
     private long sellVolume;
     private long totalVolume;
+    private long totalNotional;
     private long lastPrice;
     private boolean hasLastPrice;
 
@@ -101,6 +104,29 @@ public class TradeFlow {
     }
 
     /**
+     * Returns the number of trades in the window, including trades with hidden orders.
+     *
+     * @return number of trades
+     */
+    public int tradeCount() {
+        return trades.size();
+    }
+
+    /**
+     * Returns the volume weighted average price (VWAP) of the trades in the window: the average
+     * price where every share counts once, so big trades count more than small ones. Trades with
+     * hidden orders are included.
+     *
+     * @return the VWAP in dollars, or empty if there was no trade in the window
+     */
+    public OptionalDouble vwap() {
+        if (totalVolume == 0) {
+            return OptionalDouble.empty();
+        }
+        return OptionalDouble.of(totalNotional / PriceLevel.UNITS_PER_DOLLAR / totalVolume);
+    }
+
+    /**
      * Returns the balance of aggressive buying and selling in the window: {@code +1} if only
      * buyers were aggressive, {@code -1} if only sellers, {@code 0} if balanced or no trades.
      *
@@ -112,7 +138,7 @@ public class TradeFlow {
     }
 
     private void addTrade(MarketEvent event, Aggressor aggressor) {
-        Trade trade = new Trade(event.timestamp(), aggressor, event.quantity());
+        Trade trade = new Trade(event.timestamp(), aggressor, event.price(), event.quantity());
         trades.addLast(trade);
         count(trade, 1);
         lastPrice = event.price();
@@ -130,6 +156,7 @@ public class TradeFlow {
     private void count(Trade trade, int sign) {
         long quantity = sign * trade.quantity();
         totalVolume += quantity;
+        totalNotional += quantity * trade.price();
         switch (trade.aggressor()) {
             case BUYER -> buyVolume += quantity;
             case SELLER -> sellVolume += quantity;
@@ -147,7 +174,7 @@ public class TradeFlow {
     }
 
     /** One trade in the window. */
-    private record Trade(long timestamp, Aggressor aggressor, long quantity) {
+    private record Trade(long timestamp, Aggressor aggressor, long price, long quantity) {
 
     }
 }

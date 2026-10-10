@@ -2,6 +2,7 @@ package org.example.marketdata.flow;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.Duration;
 import org.example.marketdata.BookSide;
@@ -21,6 +22,8 @@ class TradeFlowTest {
         assertThat(flow.lastPrice()).isEmpty();
         assertThat(flow.totalVolume()).isZero();
         assertThat(flow.imbalance()).isZero();
+        assertThat(flow.tradeCount()).isZero();
+        assertThat(flow.vwap()).isEmpty();
     }
 
     @Test
@@ -89,6 +92,38 @@ class TradeFlowTest {
         assertThat(flow.totalVolume()).isZero();
         assertThat(flow.imbalance()).isZero();
         assertThat(flow.lastPrice()).hasValue(2785500);
+    }
+
+    @Test
+    void vwapIsTheAveragePriceWeightedByShares() {
+        flow.apply(event(1, EventType.EXECUTE, BookSide.ASK, 2785900, 300));
+        flow.apply(event(2, EventType.EXECUTE, BookSide.BID, 2785500, 100));
+
+        // (300 * 278.59 + 100 * 278.55) / 400 = 278.58
+        assertThat(flow.vwap().orElseThrow()).isCloseTo(278.58, within(1e-9));
+    }
+
+    @Test
+    void vwapAndTradeCountIncludeHiddenTrades() {
+        flow.apply(event(1, EventType.EXECUTE, BookSide.ASK, 2786000, 100));
+        flow.apply(event(2, EventType.TRADE, BookSide.BID, 2785000, 100));
+
+        assertThat(flow.tradeCount()).isEqualTo(2);
+        assertThat(flow.vwap().orElseThrow()).isCloseTo(278.55, within(1e-9));
+    }
+
+    @Test
+    void vwapAndTradeCountForgetTradesThatLeftTheWindow() {
+        flow.apply(event(1, EventType.EXECUTE, BookSide.ASK, 2786000, 100));
+        flow.apply(event(5, EventType.EXECUTE, BookSide.ASK, 2785000, 100));
+        flow.apply(event(11, EventType.ADD, BookSide.BID, 2785000, 10));
+
+        assertThat(flow.tradeCount()).isEqualTo(1);
+        assertThat(flow.vwap().orElseThrow()).isCloseTo(278.50, within(1e-9));
+
+        flow.apply(event(15, EventType.ADD, BookSide.BID, 2785000, 10));
+        assertThat(flow.tradeCount()).isZero();
+        assertThat(flow.vwap()).isEmpty();
     }
 
     @Test

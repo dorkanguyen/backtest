@@ -1,4 +1,4 @@
-package org.example.signal;
+package org.example.parameter;
 
 import java.util.HashMap;
 import java.util.List;

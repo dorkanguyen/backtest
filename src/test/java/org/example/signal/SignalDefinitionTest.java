@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.example.marketdata.MarketEvent;
 import org.example.marketdata.state.SymbolState;
+import org.example.parameter.ParameterSpec;
 import org.junit.jupiter.api.Test;
 
 class SignalDefinitionTest {

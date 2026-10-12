@@ -1,14 +1,9 @@
-package org.example.api;
+package org.example.candle;
 
 import java.math.BigDecimal;
 import java.util.List;
-import org.example.backtest.BacktestResult;
-import org.example.backtest.Backtester;
 import org.example.execution.CommissionModel;
 import org.example.execution.PerShareCommission;
-import org.example.marketdata.Candle;
-import org.example.marketdata.CandleRepository;
-import org.example.strategy.RisingPriceStrategy;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 

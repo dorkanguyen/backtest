@@ -1,8 +1,9 @@
-package org.example.signal;
+package org.example.filter;
 
 import java.util.List;
 import java.util.Map;
 import org.example.marketdata.book.PriceLevel;
+import org.example.parameter.ParameterSpec;
 
 /** Describes the {@link SpreadFilter} and creates it with the chosen settings. */
 public class SpreadFilterDefinition implements FilterDefinition {

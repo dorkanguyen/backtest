@@ -1,4 +1,4 @@
-package org.example.signal;
+package org.example.filter;
 
 import java.util.Optional;
 import org.example.marketdata.MarketEvent;

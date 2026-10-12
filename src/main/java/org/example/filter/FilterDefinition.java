@@ -1,6 +1,7 @@
-package org.example.signal;
+package org.example.filter;
 
 import java.util.Map;
+import org.example.parameter.Definition;
 
 /** Describes one kind of trading filter and creates filters of that kind. */
 public interface FilterDefinition extends Definition {

@@ -1,4 +1,4 @@
-package org.example.backtest;
+package org.example.candle;
 
 import java.math.BigDecimal;
 import java.util.List;

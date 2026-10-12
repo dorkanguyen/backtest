@@ -1,4 +1,4 @@
-package org.example.api;
+package org.example.api.backtest;
 
 import org.example.backtest.EventBacktestResult;
 

@@ -4,8 +4,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.example.execution.ExecutionAlgoDefinition;
-import org.example.signal.Definition;
-import org.example.signal.FilterDefinition;
+import org.example.filter.FilterDefinition;
+import org.example.parameter.Definition;
 import org.example.signal.SignalDefinition;
 
 /**

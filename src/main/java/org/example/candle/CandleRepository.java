@@ -1,4 +1,4 @@
-package org.example.marketdata;
+package org.example.candle;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

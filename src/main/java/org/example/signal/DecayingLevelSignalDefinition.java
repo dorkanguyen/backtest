@@ -3,6 +3,7 @@ package org.example.signal;
 import java.util.List;
 import java.util.Map;
 import org.example.fairprice.DecayingLevelPrice;
+import org.example.parameter.ParameterSpec;
 
 /**
  * Describes a {@link FairPriceSignal} that uses the {@link DecayingLevelPrice} model, and creates

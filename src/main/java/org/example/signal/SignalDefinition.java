@@ -1,6 +1,7 @@
 package org.example.signal;
 
 import java.util.Map;
+import org.example.parameter.Definition;
 
 /** Describes one kind of signal and creates signals of that kind with the chosen settings. */
 public interface SignalDefinition extends Definition {

@@ -1,10 +1,10 @@
 package org.example.strategy;
 
 import java.util.List;
+import org.example.filter.TradingFilter;
 import org.example.marketdata.MarketEvent;
 import org.example.marketdata.state.SymbolState;
 import org.example.signal.Signal;
-import org.example.signal.TradingFilter;
 
 /**
  * Mixes the opinions of several signals with weights and turns the result into a position.

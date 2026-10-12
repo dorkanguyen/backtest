@@ -3,6 +3,7 @@ package org.example.signal;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import org.example.parameter.ParameterSpec;
 
 /** Describes the {@link OfiSignal} and creates it with the chosen settings. */
 public class OfiSignalDefinition implements SignalDefinition {

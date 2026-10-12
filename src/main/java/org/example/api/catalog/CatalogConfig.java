@@ -1,13 +1,13 @@
-package org.example.api;
+package org.example.api.catalog;
 
 import java.util.List;
 import org.example.catalog.Catalog;
 import org.example.execution.ThrottledExecutionDefinition;
+import org.example.filter.SpreadFilterDefinition;
+import org.example.filter.TradeCountFilterDefinition;
 import org.example.signal.DecayingLevelSignalDefinition;
 import org.example.signal.ImpactPriceSignalDefinition;
 import org.example.signal.OfiSignalDefinition;
-import org.example.signal.SpreadFilterDefinition;
-import org.example.signal.TradeCountFilterDefinition;
 import org.example.signal.VwapSignalDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,4 +1,4 @@
-package org.example.signal;
+package org.example.parameter;
 
 /**
  * Describes one setting of a signal, so that a user interface can show it and check its value.

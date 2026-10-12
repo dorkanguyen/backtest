@@ -6,9 +6,8 @@ import org.example.marketdata.state.SymbolState;
 /**
  * Decides which position we want to hold, event by event.
  *
- * <p>Like {@link Strategy}, it never trades directly; it only returns a target position. How the
- * difference is traded is decided elsewhere. Strategies keep state, so use a new instance for
- * every backtest.
+ * <p>A strategy never trades directly; it only returns a target position. How the difference is
+ * traded is decided elsewhere. Strategies keep state, so use a new instance for every backtest.
  */
 public interface EventStrategy {
 

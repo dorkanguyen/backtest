@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import org.example.execution.ThrottledExecutionDefinition;
+import org.example.filter.SpreadFilterDefinition;
 import org.example.signal.OfiSignalDefinition;
-import org.example.signal.SpreadFilterDefinition;
 import org.example.signal.VwapSignalDefinition;
 import org.junit.jupiter.api.Test;
 

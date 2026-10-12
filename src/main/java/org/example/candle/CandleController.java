@@ -1,8 +1,6 @@
-package org.example.api;
+package org.example.candle;
 
 import java.util.List;
-import org.example.marketdata.Candle;
-import org.example.marketdata.CandleRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

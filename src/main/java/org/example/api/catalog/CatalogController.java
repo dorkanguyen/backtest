@@ -1,9 +1,9 @@
-package org.example.api;
+package org.example.api.catalog;
 
 import java.util.List;
 import org.example.catalog.Catalog;
-import org.example.signal.Definition;
-import org.example.signal.ParameterSpec;
+import org.example.parameter.Definition;
+import org.example.parameter.ParameterSpec;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 

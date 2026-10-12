@@ -1,4 +1,4 @@
-package org.example.signal;
+package org.example.filter;
 
 import org.example.marketdata.MarketEvent;
 import org.example.marketdata.state.SymbolState;

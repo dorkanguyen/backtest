@@ -1,4 +1,4 @@
-package org.example.api;
+package org.example.api.backtest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,8 +8,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import org.example.api.BacktestRequest.ComponentChoice;
-import org.example.api.BacktestRequest.SignalChoice;
+import org.example.api.backtest.BacktestRequest.ComponentChoice;
+import org.example.api.backtest.BacktestRequest.SignalChoice;
+import org.example.api.catalog.CatalogConfig;
 import org.example.backtest.EventBacktester;
 import org.example.marketdata.BookSide;
 import org.example.marketdata.EventType;

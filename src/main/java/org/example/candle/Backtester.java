@@ -1,16 +1,13 @@
-package org.example.backtest;
+package org.example.candle;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import org.example.execution.CommissionModel;
-import org.example.execution.ExecutionEngine;
 import org.example.execution.Fill;
-import org.example.marketdata.Candle;
 import org.example.order.Order;
 import org.example.order.Side;
 import org.example.portfolio.Portfolio;
-import org.example.strategy.Strategy;
 
 /**
  * Runs a strategy over historical candles and measures the result.

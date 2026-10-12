@@ -1,4 +1,4 @@
-package org.example.signal;
+package org.example.filter;
 
 import java.time.Duration;
 import org.example.marketdata.MarketEvent;

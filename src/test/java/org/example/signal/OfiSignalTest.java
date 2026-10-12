@@ -8,6 +8,7 @@ import org.example.marketdata.BookSide;
 import org.example.marketdata.EventType;
 import org.example.marketdata.MarketEvent;
 import org.example.marketdata.state.SymbolState;
+import org.example.parameter.ParameterSpec;
 import org.junit.jupiter.api.Test;
 
 /**

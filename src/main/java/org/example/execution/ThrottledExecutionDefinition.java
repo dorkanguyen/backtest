@@ -3,7 +3,7 @@ package org.example.execution;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import org.example.signal.ParameterSpec;
+import org.example.parameter.ParameterSpec;
 
 /** Describes the {@link ThrottledExecution} and creates it with the chosen settings. */
 public class ThrottledExecutionDefinition implements ExecutionAlgoDefinition {

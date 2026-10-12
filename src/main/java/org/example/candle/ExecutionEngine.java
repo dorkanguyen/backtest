@@ -1,7 +1,8 @@
-package org.example.execution;
+package org.example.candle;
 
 import java.math.BigDecimal;
-import org.example.marketdata.Candle;
+import org.example.execution.CommissionModel;
+import org.example.execution.Fill;
 import org.example.order.Order;
 
 /**

@@ -1,4 +1,4 @@
-package org.example.api;
+package org.example.api.backtest;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -11,9 +11,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
-import org.example.api.BacktestRequest.CommissionSettings;
-import org.example.api.BacktestRequest.ComponentChoice;
-import org.example.api.BacktestRequest.SignalChoice;
+import org.example.api.backtest.BacktestRequest.CommissionSettings;
+import org.example.api.backtest.BacktestRequest.ComponentChoice;
+import org.example.api.backtest.BacktestRequest.SignalChoice;
 import org.example.backtest.EventBacktestResult;
 import org.example.backtest.EventBacktester;
 import org.example.backtest.TradingPeriod;
@@ -21,9 +21,9 @@ import org.example.catalog.Catalog;
 import org.example.execution.BookExecutionEngine;
 import org.example.execution.ExecutionAlgo;
 import org.example.execution.PerShareCommission;
+import org.example.filter.TradingFilter;
 import org.example.marketdata.MarketEventStore;
 import org.example.marketdata.MarketEventStoreFactory;
-import org.example.signal.TradingFilter;
 import org.example.strategy.SignalMixStrategy;
 import org.example.strategy.WeightedSignal;
 

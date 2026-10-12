@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.util.List;
+import org.example.filter.TradingFilter;
 import org.example.marketdata.MarketEvent;
 import org.example.marketdata.state.SymbolState;
 import org.example.signal.Signal;
-import org.example.signal.TradingFilter;
 import org.junit.jupiter.api.Test;
 
 class SignalMixStrategyTest {

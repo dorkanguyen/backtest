@@ -1,4 +1,4 @@
-package org.example.signal;
+package org.example.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

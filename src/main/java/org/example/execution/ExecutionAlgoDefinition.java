@@ -1,7 +1,7 @@
 package org.example.execution;
 
 import java.util.Map;
-import org.example.signal.Definition;
+import org.example.parameter.Definition;
 
 /** Describes one kind of execution algorithm and creates algorithms of that kind. */
 public interface ExecutionAlgoDefinition extends Definition {

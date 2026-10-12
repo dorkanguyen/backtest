@@ -1,8 +1,9 @@
-package org.example.signal;
+package org.example.filter;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import org.example.parameter.ParameterSpec;
 
 /** Describes the {@link TradeCountFilter} and creates it with the chosen settings. */
 public class TradeCountFilterDefinition implements FilterDefinition {

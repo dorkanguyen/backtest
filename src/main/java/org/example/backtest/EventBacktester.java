@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.DoubleConsumer;
 import org.example.execution.BookExecutionEngine;
 import org.example.execution.ExecutionAlgo;
 import org.example.execution.Fill;
@@ -38,6 +39,9 @@ public class EventBacktester {
 
     /** Trade window of the shared market state; the signals keep their own windows. */
     private static final Duration STATE_TRADE_WINDOW = Duration.ofSeconds(10);
+
+    /** Progress is reported at most once per this much replayed market time. */
+    private static final long PROGRESS_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
 
     private final BookExecutionEngine engine;
     private final long sampleNanos;
@@ -71,9 +75,39 @@ public class EventBacktester {
      */
     public EventBacktestResult run(MarketEventStore store, String symbol, TradingPeriod period,
             EventStrategy strategy, ExecutionAlgo algo, BigDecimal startingCash) {
+        return run(store, symbol, period, strategy, algo, startingCash, progress -> {});
+    }
+
+    /**
+     * Runs one backtest and reports how far it got.
+     *
+     * @param store where the events are read from
+     * @param symbol the symbol to trade, for example {@code AAPL}
+     * @param period when to warm up, trade and close the position
+     * @param strategy a new strategy, not used before
+     * @param algo a new execution algorithm, not used before
+     * @param startingCash the cash at the start
+     * @param progress receives the finished part of the period, from 0 to 1, about once per
+     *         replayed minute and 1 at the end
+     * @return the outcome
+     */
+    public EventBacktestResult run(MarketEventStore store, String symbol, TradingPeriod period,
+            EventStrategy strategy, ExecutionAlgo algo, BigDecimal startingCash,
+            DoubleConsumer progress) {
+        long from = toNanos(period.warmUpStart());
+        long to = toNanos(period.end());
         Run run = new Run(symbol, toNanos(period.start()), strategy, algo, startingCash);
-        store.replay(symbol, toNanos(period.warmUpStart()), toNanos(period.end()), run::onEvent);
-        return run.finish(toNanos(period.end()));
+        long[] nextReport = {from};
+        store.replay(symbol, from, to, event -> {
+            if (event.timestamp() >= nextReport[0]) {
+                progress.accept((double) (event.timestamp() - from) / (to - from));
+                nextReport[0] = event.timestamp() + PROGRESS_INTERVAL_NANOS;
+            }
+            run.onEvent(event);
+        });
+        EventBacktestResult result = run.finish(to);
+        progress.accept(1);
+        return result;
     }
 
     /** Converts a New York time to nanoseconds since 1970 UTC. */

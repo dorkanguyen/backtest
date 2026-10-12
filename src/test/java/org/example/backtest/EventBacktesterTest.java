@@ -1,6 +1,7 @@
 package org.example.backtest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -8,7 +9,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import org.example.execution.BookExecutionEngine;
 import org.example.execution.ExecutionAlgo;
 import org.example.execution.Fill;
@@ -16,8 +16,8 @@ import org.example.execution.PerShareCommission;
 import org.example.execution.ThrottledExecutionDefinition;
 import org.example.marketdata.BookSide;
 import org.example.marketdata.EventType;
+import org.example.marketdata.ListMarketEventStore;
 import org.example.marketdata.MarketEvent;
-import org.example.marketdata.MarketEventStore;
 import org.example.marketdata.state.SymbolState;
 import org.example.order.Side;
 import org.example.strategy.EventStrategy;
@@ -51,7 +51,7 @@ class EventBacktesterTest {
             new BookExecutionEngine(
                     new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00"))),
             Duration.ofMinutes(1))
-            .run(new ListStore(events), "AAPL",
+            .run(new ListMarketEventStore(events), "AAPL",
                     new TradingPeriod(DAY.withHour(9), DAY.withHour(9).withMinute(30),
                             DAY.withHour(10)),
                     new FixedTargetStrategy(100), noThrottling(), new BigDecimal("10000"));
@@ -96,6 +96,26 @@ class EventBacktesterTest {
         assertThat(curve.get(30).time()).isEqualTo(DAY.withHour(10));
     }
 
+    @Test
+    void progressGrowsToOne() {
+        List<Double> reports = new ArrayList<>();
+        new EventBacktester(
+                new BookExecutionEngine(
+                        new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00"))),
+                Duration.ofMinutes(1))
+                .run(new ListMarketEventStore(events), "AAPL",
+                        new TradingPeriod(DAY.withHour(9), DAY.withHour(9).withMinute(30),
+                                DAY.withHour(10)),
+                        new FixedTargetStrategy(100), noThrottling(), new BigDecimal("10000"),
+                        reports::add);
+
+        // the replay runs from 09:00 to 10:00; the second event comes at 09:31
+        assertThat(reports).first().isEqualTo(0.0);
+        assertThat(reports).isSorted();
+        assertThat(reports).last().isEqualTo(1.0);
+        assertThat(reports.get(1)).isCloseTo(31.0 / 60, within(1e-9));
+    }
+
     private static ExecutionAlgo noThrottling() {
         return new ThrottledExecutionDefinition()
                 .create(Map.of("toleranceShares", 1.0, "cooldownSeconds", 0.0));
@@ -117,41 +137,6 @@ class EventBacktesterTest {
         @Override
         public int targetPosition(int currentPosition) {
             return target;
-        }
-    }
-
-    /** An event store that keeps its events in a list, for tests. */
-    private static final class ListStore implements MarketEventStore {
-
-        private final List<MarketEvent> events;
-
-        ListStore(List<MarketEvent> events) {
-            this.events = new ArrayList<>(events);
-        }
-
-        @Override
-        public void deleteBetween(long fromInclusive, long toExclusive) {
-            events.removeIf(e -> e.timestamp() >= fromInclusive && e.timestamp() < toExclusive);
-        }
-
-        @Override
-        public void save(MarketEvent event) {
-            events.add(event);
-        }
-
-        @Override
-        public void replay(String symbol, long fromInclusive, long toExclusive,
-                Consumer<MarketEvent> listener) {
-            for (MarketEvent event : events) {
-                if (event.symbol().equals(symbol) && event.timestamp() >= fromInclusive
-                        && event.timestamp() < toExclusive) {
-                    listener.accept(event);
-                }
-            }
-        }
-
-        @Override
-        public void close() {
         }
     }
 }

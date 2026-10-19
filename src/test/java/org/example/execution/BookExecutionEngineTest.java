@@ -1,6 +1,7 @@
 package org.example.execution;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -83,7 +84,16 @@ class BookExecutionEngineTest {
         OrderBook onlyBids = new OrderBook("AAPL");
         onlyBids.apply(new MarketEvent(0, "AAPL", EventType.ADD, 1, BookSide.BID, 2785500, 100));
 
-        assertThat(engine.execute(new Order("AAPL", Side.BUY, 10), onlyBids, TIME)).isEmpty();
+        assertThat(engine.execute(Order.market(1, "AAPL", Side.BUY, 10), onlyBids, TIME))
+                .isEmpty();
+    }
+
+    @Test
+    void limitOrderIsRejected() {
+        Order limit = Order.limit(1, "AAPL", Side.BUY, 10, 2785500);
+
+        assertThatThrownBy(() -> engine.execute(limit, book, TIME))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -94,13 +104,14 @@ class BookExecutionEngineTest {
                     2785900 + i * 100L, 10));
         }
 
-        Fill fill = engine.execute(new Order("AAPL", Side.BUY, 200), deep, TIME).orElseThrow();
+        Fill fill = engine.execute(Order.market(1, "AAPL", Side.BUY, 200), deep, TIME)
+                .orElseThrow();
 
         assertThat(fill.quantity()).isEqualTo(200);
     }
 
     private Optional<Fill> execute(Side side, int quantity) {
-        return engine.execute(new Order("AAPL", side, quantity), book, TIME);
+        return engine.execute(Order.market(1, "AAPL", side, quantity), book, TIME);
     }
 
     private void add(long orderId, BookSide side, long price, long quantity) {

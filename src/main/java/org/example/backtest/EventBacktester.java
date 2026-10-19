@@ -40,6 +40,12 @@ public class EventBacktester {
     /** Trade window of the shared market state; the signals keep their own windows. */
     private static final Duration STATE_TRADE_WINDOW = Duration.ofSeconds(10);
 
+    /**
+     * Id of the order that closes the position at the end. Execution algorithms number their
+     * orders from 1.
+     */
+    static final long CLOSING_ORDER_ID = 0;
+
     /** Progress is reported at most once per this much replayed market time. */
     private static final long PROGRESS_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
 
@@ -171,7 +177,7 @@ public class EventBacktester {
             int position = portfolio.getPosition();
             if (position != 0) {
                 Side side = position > 0 ? Side.SELL : Side.BUY;
-                fill(new Order(symbol, side, Math.abs(position)), end);
+                fill(Order.market(CLOSING_ORDER_ID, symbol, side, Math.abs(position)), end);
             }
             sample(end);
 

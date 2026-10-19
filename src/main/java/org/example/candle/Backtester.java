@@ -37,6 +37,7 @@ public class Backtester {
         BigDecimal peak = startingCash;
         BigDecimal maxDrawdown = BigDecimal.ZERO;
         BigDecimal totalCommission = BigDecimal.ZERO;
+        long nextOrderId = 1;
 
         for (Candle candle : candles) {
             int target = strategy.targetPosition(candle);
@@ -47,7 +48,8 @@ public class Backtester {
                 if (difference < 0) {
                     side = Side.SELL;
                 }
-                Order order = new Order(candle.symbol(), side, Math.abs(difference));
+                Order order = Order.market(nextOrderId++, candle.symbol(), side,
+                        Math.abs(difference));
                 Fill fill = executionEngine.execute(order, candle);
                 portfolio.apply(fill);
                 fills.add(fill);

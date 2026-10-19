@@ -18,12 +18,12 @@ class ThrottledExecutionTest {
 
     @Test
     void bigDifferenceIsBought() {
-        assertThat(decide(0, 26, 40)).contains(new Order("AAPL", Side.BUY, 14));
+        assertThat(decide(0, 26, 40)).contains(Order.market(1, "AAPL", Side.BUY, 14));
     }
 
     @Test
     void bigDifferenceIsSold() {
-        assertThat(decide(0, 50, 30)).contains(new Order("AAPL", Side.SELL, 20));
+        assertThat(decide(0, 50, 30)).contains(Order.market(1, "AAPL", Side.SELL, 20));
     }
 
     @Test
@@ -33,12 +33,12 @@ class ThrottledExecutionTest {
 
     @Test
     void closingThePositionIgnoresTheTolerance() {
-        assertThat(decide(0, 5, 0)).contains(new Order("AAPL", Side.SELL, 5));
+        assertThat(decide(0, 5, 0)).contains(Order.market(1, "AAPL", Side.SELL, 5));
     }
 
     @Test
     void goingFromLongToShortSellsTheWholeDifference() {
-        assertThat(decide(0, 30, -20)).contains(new Order("AAPL", Side.SELL, 50));
+        assertThat(decide(0, 30, -20)).contains(Order.market(1, "AAPL", Side.SELL, 50));
     }
 
     @Test
@@ -51,14 +51,21 @@ class ThrottledExecutionTest {
         decide(0, 0, 50);
 
         assertThat(decide(29, 50, 0)).isEmpty();
-        assertThat(decide(30, 50, 0)).contains(new Order("AAPL", Side.SELL, 50));
+        assertThat(decide(30, 50, 0)).contains(Order.market(2, "AAPL", Side.SELL, 50));
     }
 
     @Test
     void ignoredDifferenceDoesNotStartTheCooldown() {
         decide(0, 50, 45);
 
-        assertThat(decide(1, 50, 0)).contains(new Order("AAPL", Side.SELL, 50));
+        assertThat(decide(1, 50, 0)).contains(Order.market(1, "AAPL", Side.SELL, 50));
+    }
+
+    @Test
+    void ordersAreNumberedFromOne() {
+        assertThat(decide(0, 0, 50)).map(Order::id).contains(1L);
+        assertThat(decide(30, 50, 0)).map(Order::id).contains(2L);
+        assertThat(decide(60, 0, -50)).map(Order::id).contains(3L);
     }
 
     @Test

@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.example.marketdata.book.OrderBook;
 import org.example.marketdata.book.PriceLevel;
 import org.example.order.Order;
+import org.example.order.OrderType;
 import org.example.order.Side;
 
 /**
@@ -46,8 +47,12 @@ public class BookExecutionEngine {
      * @param time the time of the fill
      * @return the fill at the average price of the taken levels, or empty if the needed side of
      *         the book is empty
+     * @throws IllegalArgumentException if the order is not a market order
      */
     public Optional<Fill> execute(Order order, OrderBook book, LocalDateTime time) {
+        if (order.type() != OrderType.MARKET) {
+            throw new IllegalArgumentException("Only market orders are filled here: " + order);
+        }
         long wanted = order.quantity();
         int depth = FIRST_DEPTH;
         while (true) {

@@ -19,6 +19,7 @@ public class ThrottledExecution implements ExecutionAlgo {
     private final long cooldownNanos;
     private long lastTradeTime;
     private boolean traded;
+    private long nextOrderId = 1;
 
     /**
      * Creates the algorithm.
@@ -54,6 +55,6 @@ public class ThrottledExecution implements ExecutionAlgo {
         traded = true;
         lastTradeTime = timestamp;
         Side side = difference > 0 ? Side.BUY : Side.SELL;
-        return Optional.of(new Order(symbol, side, Math.abs(difference)));
+        return Optional.of(Order.market(nextOrderId++, symbol, side, Math.abs(difference)));
     }
 }

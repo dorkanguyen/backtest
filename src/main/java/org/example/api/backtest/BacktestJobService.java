@@ -20,7 +20,7 @@ import org.example.backtest.TradingPeriod;
 import org.example.catalog.Catalog;
 import org.example.execution.BookExecutionEngine;
 import org.example.execution.ExecutionAlgo;
-import org.example.execution.PerShareCommission;
+import org.example.execution.TieredCommission;
 import org.example.filter.TradingFilter;
 import org.example.marketdata.MarketEventStore;
 import org.example.marketdata.MarketEventStoreFactory;
@@ -43,8 +43,14 @@ public class BacktestJobService {
     static final int MAX_JOBS = 50;
 
     private static final Duration SAMPLE_INTERVAL = Duration.ofSeconds(1);
-    private static final CommissionSettings DEFAULT_COMMISSION =
-            new CommissionSettings(new BigDecimal("0.005"), new BigDecimal("1.00"));
+
+    /**
+     * Interactive Brokers "Tiered" pricing at the lowest volume tier, plus the Nasdaq fee for
+     * taking liquidity and the clearing fee (December 2025).
+     */
+    private static final CommissionSettings DEFAULT_COMMISSION = new CommissionSettings(
+            new BigDecimal("0.0035"), new BigDecimal("0.35"),
+            new BigDecimal("0.003"), new BigDecimal("0.0002"));
 
     private final Catalog catalog;
     private final MarketEventStoreFactory stores;
@@ -147,14 +153,13 @@ public class BacktestJobService {
 
         CommissionSettings commission =
                 request.commission() == null ? DEFAULT_COMMISSION : request.commission();
-        if (required(commission.perShare(), "commission.perShare").signum() < 0
-                || required(commission.minimum(), "commission.minimum").signum() < 0) {
-            throw new IllegalArgumentException("Commission must not be negative");
-        }
-        EventBacktester backtester = new EventBacktester(
-                new BookExecutionEngine(
-                        new PerShareCommission(commission.perShare(), commission.minimum())),
-                SAMPLE_INTERVAL);
+        TieredCommission commissionModel = new TieredCommission(
+                required(commission.perShare(), "commission.perShare"),
+                required(commission.minimum(), "commission.minimum"),
+                commission.exchangePerShare(),
+                commission.clearingPerShare());
+        EventBacktester backtester =
+                new EventBacktester(new BookExecutionEngine(commissionModel), SAMPLE_INTERVAL);
 
         return new Prepared(symbol, period, startingCash,
                 new SignalMixStrategy(signals, filters, maxPosition), algo, backtester);

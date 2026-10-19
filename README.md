@@ -8,7 +8,8 @@ configurable signals decide on a target position, and simulates the resulting ma
 against the book to measure PnL, equity and drawdown.
 
 > **Status:** work in progress. The event-driven backtest runs end to end on real Nasdaq data and
-> can be started over a REST API. A React frontend is next.
+> can be started over a REST API. Next: making execution cheaper (cost-aware trading, limit orders);
+> a React frontend comes later.
 
 ## Features
 
@@ -41,7 +42,9 @@ against the book to measure PnL, equity and drawdown.
 
 - Throttled execution: ignores small position changes and waits between trades to save commission
 - Market orders are filled from the real book, level by level (partial fills when the book is thin)
-- Per-share commission with a minimum (e.g. $0.005 per share, $1.00 minimum)
+- Tiered commission: broker fee per share with a minimum, plus exchange and clearing fees per share
+  (default: $0.0035 per share with a $0.35 minimum, $0.003 exchange and $0.0002 clearing fee, so
+  100 shares cost $0.67)
 - Warm-up from the pre-market open, trading in a chosen period, position closed at the end
 - Results: PnL, total commission, max drawdown, every fill, equity curve sampled every second
 - `BigDecimal` for all money; prices from the exchange are kept as exact integers
@@ -164,7 +167,8 @@ curl -X POST http://localhost:8080/api/backtests \
         ],
         "filters":    [ { "id": "tradeCount" }, { "id": "spread" } ],
         "execution":    { "id": "throttled", "parameters": { "cooldownSeconds": 300 } },
-        "commission":   { "perShare": 0.005, "minimum": 1.00 }
+        "commission":   { "perShare": 0.0035, "minimum": 0.35,
+                          "exchangePerShare": 0.003, "clearingPerShare": 0.0002 }
       }'
 ```
 
@@ -181,8 +185,9 @@ A wrong setting (for example an unknown signal id) is rejected at once with `400
 On one day of data (2025-12-09), the signals point in the right direction on average, but they
 predict moves of only a fraction of a cent over the next seconds. Crossing the spread with market
 orders and paying commission costs more than that, so the market-order version of the strategy
-loses money on most symbols. This is the expected next challenge: cost-aware trading and limit
-orders.
+loses money on most symbols. A realistic tiered commission roughly halves the cost, but most of it
+is the spread, so the strategy still loses even without any commission. This is the expected next
+challenge: cost-aware trading and limit orders.
 
 ## Roadmap
 
@@ -192,6 +197,7 @@ orders.
 - [x] Throttled execution and fills from the order book
 - [x] Event-driven backtest with PnL, equity curve and max drawdown
 - [x] REST API with background jobs
+- [x] Realistic tiered commission (broker, exchange and clearing fees)
 - [ ] React frontend: settings built from the catalog, equity chart, results and fills
 - [ ] Cost-aware trading: trade only when the expected move beats spread and commission
 - [ ] Limit orders and market making simulation (queue position, partial fills)

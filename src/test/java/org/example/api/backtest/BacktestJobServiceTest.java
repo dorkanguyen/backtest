@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import org.example.api.backtest.BacktestRequest.CommissionSettings;
 import org.example.api.backtest.BacktestRequest.ComponentChoice;
 import org.example.api.backtest.BacktestRequest.SignalChoice;
 import org.example.api.catalog.CatalogConfig;
@@ -76,6 +77,20 @@ class BacktestJobServiceTest {
 
         assertThatThrownBy(() -> service.submit(backwards))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void negativeCommissionIsRejected() {
+        BacktestRequest negative = new BacktestRequest("AAPL", DAY, LocalTime.of(9, 30),
+                LocalTime.of(10, 0), new BigDecimal("10000"), 100,
+                List.of(new SignalChoice("vwap", 1, Map.of())), List.of(),
+                new ComponentChoice("throttled", Map.of()),
+                new CommissionSettings(new BigDecimal("0.0035"), new BigDecimal("0.35"),
+                        new BigDecimal("-0.003"), null));
+
+        assertThatThrownBy(() -> service.submit(negative))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exchangePerShare must not be negative");
     }
 
     @Test

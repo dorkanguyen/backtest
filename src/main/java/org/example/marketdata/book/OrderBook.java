@@ -93,6 +93,25 @@ public class OrderBook {
         return top(asks, depth);
     }
 
+    /**
+     * Returns the orders waiting at one price of one side, for example to know who is ahead of a
+     * new order joining that price.
+     *
+     * @param side bid or ask side
+     * @param price price in 1/10000 dollars
+     * @return order id to remaining quantity; a copy, empty if no order waits at that price
+     */
+    public Map<Long, Long> ordersAt(BookSide side, long price) {
+        Map<Long, Long> result = new HashMap<>();
+        for (Map.Entry<Long, RestingOrder> entry : orders.entrySet()) {
+            RestingOrder order = entry.getValue();
+            if (order.side() == side && order.price() == price) {
+                result.put(entry.getKey(), order.quantity());
+            }
+        }
+        return result;
+    }
+
     private void add(long orderId, BookSide side, long price, long quantity) {
         orders.put(orderId, new RestingOrder(side, price, quantity));
         levels(side).merge(price, quantity, Long::sum);

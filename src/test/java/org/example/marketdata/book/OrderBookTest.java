@@ -3,6 +3,7 @@ package org.example.marketdata.book;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Map;
 import org.example.marketdata.BookSide;
 import org.example.marketdata.EventType;
 import org.example.marketdata.MarketEvent;
@@ -103,6 +104,19 @@ class OrderBookTest {
         book.apply(event(EventType.DELETE, 99, BookSide.BID, 2785500, 100));
 
         assertThat(book.bestBid()).contains(new PriceLevel(2785500, 100));
+    }
+
+    @Test
+    void ordersAtReturnsTheOrdersOfOnePriceAndSide() {
+        book.apply(event(EventType.ADD, 1, BookSide.BID, 2785500, 100));
+        book.apply(event(EventType.ADD, 2, BookSide.BID, 2785500, 50));
+        book.apply(event(EventType.ADD, 3, BookSide.BID, 2785400, 70));
+        book.apply(event(EventType.ADD, 4, BookSide.ASK, 2785500, 30));
+        book.apply(event(EventType.EXECUTE, 1, BookSide.BID, 2785500, 40));
+
+        assertThat(book.ordersAt(BookSide.BID, 2785500)).containsOnly(
+                Map.entry(1L, 60L), Map.entry(2L, 50L));
+        assertThat(book.ordersAt(BookSide.BID, 2785300)).isEmpty();
     }
 
     @Test

@@ -7,15 +7,16 @@ import java.math.BigDecimal;
  *
  * <p>This is how brokers with tiered pricing (for example Interactive Brokers "Tiered") charge:
  * the broker fee has a minimum per fill, while the exchange and clearing fees are passed on per
- * share. Example with 0.0035 per share and 0.35 minimum, 0.003 exchange and 0.0002 clearing fee:
- * 100 shares cost 0.35 + 0.30 + 0.02 = 0.67.
+ * share. The exchange charges a fee to takers and pays a rebate to makers. Example with 0.0035
+ * per share and 0.35 minimum, 0.003 taker fee, 0.002 maker rebate and 0.0002 clearing fee:
+ * 100 shares cost 0.35 + 0.30 + 0.02 = 0.67 as a taker and 0.35 - 0.20 + 0.02 = 0.17 as a maker.
  *
  * <p>With zero exchange and clearing fees this is the same as {@link PerShareCommission}.
  *
  * <p>Not modelled, because they are tiny or do not apply yet: the cap of the broker fee at 1% of
  * the trade value, the SEC fee on sales (zero per million dollars in December 2025), the FINRA
- * trading activity fee on sales (a small fraction of a cent per share) and exchange rebates for
- * limit orders that add liquidity.
+ * trading activity fee on sales (a small fraction of a cent per share) and the volume tiers of
+ * the exchange fees.
  */
 public class TieredCommission implements CommissionModel {
 
@@ -23,26 +24,30 @@ public class TieredCommission implements CommissionModel {
     private final BigDecimal brokerMinimum;
     private final BigDecimal exchangePerShare;
     private final BigDecimal clearingPerShare;
+    private final BigDecimal makerRebatePerShare;
 
     /**
      * Creates a tiered commission model.
      *
      * @param brokerPerShare broker fee per share, for example 0.0035
      * @param brokerMinimum least broker fee of one fill, for example 0.35
-     * @param exchangePerShare exchange fee per share, for example 0.003
+     * @param exchangePerShare exchange fee per share paid by takers, for example 0.003
      * @param clearingPerShare clearing fee per share, for example 0.0002
-     * @throws IllegalArgumentException if a fee is negative
+     * @param makerRebatePerShare exchange rebate per share paid to makers, for example 0.002
+     * @throws IllegalArgumentException if a fee or the rebate is negative
      */
     public TieredCommission(BigDecimal brokerPerShare, BigDecimal brokerMinimum,
-            BigDecimal exchangePerShare, BigDecimal clearingPerShare) {
+            BigDecimal exchangePerShare, BigDecimal clearingPerShare,
+            BigDecimal makerRebatePerShare) {
         this.brokerPerShare = notNegative(brokerPerShare, "brokerPerShare");
         this.brokerMinimum = notNegative(brokerMinimum, "brokerMinimum");
         this.exchangePerShare = notNegative(exchangePerShare, "exchangePerShare");
         this.clearingPerShare = notNegative(clearingPerShare, "clearingPerShare");
+        this.makerRebatePerShare = notNegative(makerRebatePerShare, "makerRebatePerShare");
     }
 
     @Override
-    public BigDecimal calculate(int quantity, BigDecimal price) {
+    public BigDecimal calculate(int quantity, BigDecimal price, Liquidity liquidity) {
         BigDecimal shares = BigDecimal.valueOf(quantity);
 
         BigDecimal brokerFee = brokerPerShare.multiply(shares);
@@ -50,7 +55,9 @@ public class TieredCommission implements CommissionModel {
             brokerFee = brokerMinimum;
         }
 
-        BigDecimal passedOnFees = exchangePerShare.add(clearingPerShare).multiply(shares);
+        BigDecimal exchangeFee =
+                liquidity == Liquidity.TAKER ? exchangePerShare : makerRebatePerShare.negate();
+        BigDecimal passedOnFees = exchangeFee.add(clearingPerShare).multiply(shares);
         return brokerFee.add(passedOnFees);
     }
 

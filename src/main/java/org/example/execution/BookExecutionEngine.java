@@ -13,7 +13,7 @@ import org.example.order.Side;
 
 /**
  * Simulates market orders against the order book: a buy takes the asks level by level, starting
- * at the cheapest; a sell takes the bids, starting at the highest.
+ * at the cheapest; a sell takes the bids, starting at the highest. Every fill is a taker fill.
  *
  * <p>If the book has fewer shares than the order, only the available shares are filled. The
  * simulated order does not change the book: in a backtest the book comes from history, so later
@@ -84,8 +84,8 @@ public class BookExecutionEngine {
                 .divide(unitsPerDollar.multiply(BigDecimal.valueOf(filled)), PRICE_SCALE,
                         RoundingMode.HALF_EVEN)
                 .stripTrailingZeros();
-        BigDecimal commission = commissionModel.calculate(filled, averagePrice);
-        return Optional.of(
-                new Fill(order.symbol(), order.side(), filled, averagePrice, commission, time));
+        BigDecimal commission = commissionModel.calculate(filled, averagePrice, Liquidity.TAKER);
+        return Optional.of(new Fill(order.symbol(), order.side(), filled, averagePrice, commission,
+                Liquidity.TAKER, time));
     }
 }

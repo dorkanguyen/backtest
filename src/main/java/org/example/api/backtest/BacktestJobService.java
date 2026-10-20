@@ -46,11 +46,12 @@ public class BacktestJobService {
 
     /**
      * Interactive Brokers "Tiered" pricing at the lowest volume tier, plus the Nasdaq fee for
-     * taking liquidity and the clearing fee (December 2025).
+     * taking liquidity, the clearing fee (December 2025) and an approximate Nasdaq rebate for
+     * adding liquidity.
      */
     private static final CommissionSettings DEFAULT_COMMISSION = new CommissionSettings(
             new BigDecimal("0.0035"), new BigDecimal("0.35"),
-            new BigDecimal("0.003"), new BigDecimal("0.0002"));
+            new BigDecimal("0.003"), new BigDecimal("0.0002"), new BigDecimal("0.002"));
 
     private final Catalog catalog;
     private final MarketEventStoreFactory stores;
@@ -157,7 +158,8 @@ public class BacktestJobService {
                 required(commission.perShare(), "commission.perShare"),
                 required(commission.minimum(), "commission.minimum"),
                 commission.exchangePerShare(),
-                commission.clearingPerShare());
+                commission.clearingPerShare(),
+                commission.makerRebatePerShare());
         EventBacktester backtester =
                 new EventBacktester(new BookExecutionEngine(commissionModel), SAMPLE_INTERVAL);
 

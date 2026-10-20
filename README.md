@@ -43,6 +43,7 @@ against the book to measure PnL, equity and drawdown.
 - Throttled execution: ignores small position changes and waits between trades to save commission
 - Market orders are filled from the real book, level by level (partial fills when the book is thin)
 - Tiered commission: broker fee per share with a minimum, plus exchange and clearing fees per share
+  (takers pay the exchange fee, makers get a rebate)
   (default: $0.0035 per share with a $0.35 minimum, $0.003 exchange and $0.0002 clearing fee, so
   100 shares cost $0.67)
 - Warm-up from the pre-market open, trading in a chosen period, position closed at the end
@@ -168,7 +169,8 @@ curl -X POST http://localhost:8080/api/backtests \
         "filters":    [ { "id": "tradeCount" }, { "id": "spread" } ],
         "execution":    { "id": "throttled", "parameters": { "cooldownSeconds": 300 } },
         "commission":   { "perShare": 0.0035, "minimum": 0.35,
-                          "exchangePerShare": 0.003, "clearingPerShare": 0.0002 }
+                          "exchangePerShare": 0.003, "clearingPerShare": 0.0002,
+                          "makerRebatePerShare": 0.002 }
       }'
 ```
 

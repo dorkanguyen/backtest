@@ -6,7 +6,7 @@ import java.math.BigDecimal;
  * Commission charged per share, with a minimum per fill.
  *
  * <p>Example: with 0.005 per share and a minimum of 1.00, 100 shares cost 1.00
- * and 1000 shares cost 5.00.
+ * and 1000 shares cost 5.00. Makers and takers pay the same.
  */
 public class PerShareCommission implements CommissionModel {
 
@@ -25,7 +25,7 @@ public class PerShareCommission implements CommissionModel {
     }
 
     @Override
-    public BigDecimal calculate(int quantity, BigDecimal price) {
+    public BigDecimal calculate(int quantity, BigDecimal price, Liquidity liquidity) {
         BigDecimal commission = perShare.multiply(BigDecimal.valueOf(quantity));
 
         if (commission.compareTo(minimum) < 0) {

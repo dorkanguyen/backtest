@@ -86,7 +86,7 @@ class BacktestJobServiceTest {
                 List.of(new SignalChoice("vwap", 1, Map.of())), List.of(),
                 new ComponentChoice("throttled", Map.of()),
                 new CommissionSettings(new BigDecimal("0.0035"), new BigDecimal("0.35"),
-                        new BigDecimal("-0.003"), null));
+                        new BigDecimal("-0.003"), null, null));
 
         assertThatThrownBy(() -> service.submit(negative))
                 .isInstanceOf(IllegalArgumentException.class)

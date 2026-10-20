@@ -51,6 +51,7 @@ class BookExecutionEngineTest {
         assertThat(fill.quantity()).isEqualTo(100);
         assertThat(fill.price()).isEqualByComparingTo("278.59");
         assertThat(fill.commission()).isEqualByComparingTo("1.00");
+        assertThat(fill.liquidity()).isEqualTo(Liquidity.TAKER);
         assertThat(fill.time()).isEqualTo(TIME);
     }
 

@@ -3,12 +3,14 @@ package org.example.candle;
 import java.math.BigDecimal;
 import org.example.execution.CommissionModel;
 import org.example.execution.Fill;
+import org.example.execution.Liquidity;
 import org.example.order.Order;
 
 /**
  * Simulates how orders are filled.
  *
- * <p>Simplified version: every order is filled completely at the close price of the candle.
+ * <p>Simplified version: every order is filled completely at the close price of the candle, as a
+ * taker.
  * Later this will be replaced by an order book based simulation.
  */
 public class ExecutionEngine {
@@ -33,7 +35,8 @@ public class ExecutionEngine {
      */
     public Fill execute(Order order, Candle candle) {
         BigDecimal price = candle.close();
-        BigDecimal commission = commissionModel.calculate(order.quantity(), price);
+        BigDecimal commission =
+                commissionModel.calculate(order.quantity(), price, Liquidity.TAKER);
 
         return new Fill(
                 order.symbol(),
@@ -41,6 +44,7 @@ public class ExecutionEngine {
                 order.quantity(),
                 price,
                 commission,
+                Liquidity.TAKER,
                 candle.openTime()
         );
     }

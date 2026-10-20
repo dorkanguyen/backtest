@@ -11,10 +11,11 @@ import org.example.order.Side;
  * @param side buy or sell
  * @param quantity number of shares, always positive
  * @param price price per share
- * @param commission fee paid for this fill
+ * @param commission fee paid for this fill; negative if a maker rebate was larger than the fees
+ * @param liquidity whether our order added (maker) or took (taker) liquidity
  * @param time when the fill happened
  */
 public record Fill(String symbol, Side side, int quantity, BigDecimal price, BigDecimal commission,
-        LocalDateTime time) {
+        Liquidity liquidity, LocalDateTime time) {
 
 }

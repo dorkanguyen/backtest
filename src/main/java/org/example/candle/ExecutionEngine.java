@@ -39,6 +39,7 @@ public class ExecutionEngine {
                 commissionModel.calculate(order.quantity(), price, Liquidity.TAKER);
 
         return new Fill(
+                order.id(),
                 order.symbol(),
                 order.side(),
                 order.quantity(),

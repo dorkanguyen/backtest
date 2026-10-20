@@ -2,8 +2,10 @@ package org.example.execution;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.example.marketdata.book.OrderBook;
 import org.example.order.Order;
 import org.example.order.Side;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ class ThrottledExecutionTest {
 
     private static final long SECOND = 1_000_000_000L;
 
+    private final OrderBook book = new OrderBook("AAPL");
     private final ExecutionAlgo algo = new ThrottledExecutionDefinition()
             .create(Map.of("toleranceShares", 10.0, "cooldownSeconds", 30.0));
 
@@ -73,11 +76,17 @@ class ThrottledExecutionTest {
         ExecutionAlgo noWaiting = new ThrottledExecutionDefinition()
                 .create(Map.of("cooldownSeconds", 0.0));
 
-        assertThat(noWaiting.decide(0, "AAPL", 0, 50)).isPresent();
-        assertThat(noWaiting.decide(0, "AAPL", 50, 0)).isPresent();
+        assertThat(noWaiting.decide(0, "AAPL", 0, 50, book)).hasSize(1);
+        assertThat(noWaiting.decide(0, "AAPL", 50, 0, book)).hasSize(1);
     }
 
+    /** Returns the market order the algorithm places, if any; it never sends more than one. */
     private Optional<Order> decide(long second, int current, int target) {
-        return algo.decide(second * SECOND, "AAPL", current, target);
+        List<Instruction> instructions =
+                algo.decide(second * SECOND, "AAPL", current, target, book);
+        assertThat(instructions).hasSizeLessThanOrEqualTo(1);
+        return instructions.stream()
+                .map(instruction -> ((Instruction.Place) instruction).order())
+                .findFirst();
     }
 }

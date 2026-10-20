@@ -99,6 +99,15 @@ public class QueueSimulator {
     }
 
     /**
+     * Returns our order.
+     *
+     * @return the limit order this queue belongs to
+     */
+    public Order order() {
+        return order;
+    }
+
+    /**
      * Returns how many shares wait ahead of our order at its price.
      *
      * @return shares ahead

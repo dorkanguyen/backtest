@@ -9,9 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.DoubleConsumer;
-import org.example.execution.BookExecutionEngine;
+import org.example.execution.CommissionModel;
 import org.example.execution.ExecutionAlgo;
+import org.example.execution.ExecutionSimulator;
 import org.example.execution.Fill;
+import org.example.execution.Instruction;
 import org.example.marketdata.MarketEvent;
 import org.example.marketdata.MarketEventStore;
 import org.example.marketdata.book.OrderBook;
@@ -26,11 +28,13 @@ import org.example.strategy.EventStrategy;
  * Replays the stored events of one symbol and trades them with a strategy, like it would happen
  * live.
  *
- * <p>For every event: the market state and the strategy are updated, the strategy says its
- * target position, the execution algorithm decides whether to send an order, and the order is
- * filled from the book. Before trading starts, events only warm up the book and the signals. At
- * the end the position is closed. The equity is sampled at a fixed interval, because recording it
- * at millions of events would be far too much.
+ * <p>For every event: the market state is updated, waiting limit orders move forward in their
+ * queues and may be filled, the strategy is updated and says its target position, and the
+ * execution algorithm decides what to do; its instructions are carried out by an
+ * {@link ExecutionSimulator}. Every fill is reported back to the algorithm. Before trading
+ * starts, events only warm up the book and the signals. At the end the waiting orders are
+ * cancelled and the position is closed with a market order. The equity is sampled at a fixed
+ * interval, because recording it at millions of events would be far too much.
  */
 public class EventBacktester {
 
@@ -49,22 +53,22 @@ public class EventBacktester {
     /** Progress is reported at most once per this much replayed market time. */
     private static final long PROGRESS_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
 
-    private final BookExecutionEngine engine;
+    private final CommissionModel commissionModel;
     private final long sampleNanos;
 
     /**
      * Creates the backtester.
      *
-     * @param engine fills the orders from the book
+     * @param commissionModel calculates the commission of every fill
      * @param sampleInterval how often the equity is recorded, for example 1 second
      * @throws IllegalArgumentException if the sample interval is not positive
      */
-    public EventBacktester(BookExecutionEngine engine, Duration sampleInterval) {
+    public EventBacktester(CommissionModel commissionModel, Duration sampleInterval) {
         if (sampleInterval.isNegative() || sampleInterval.isZero()) {
             throw new IllegalArgumentException(
                     "Sample interval must be positive: " + sampleInterval);
         }
-        this.engine = engine;
+        this.commissionModel = commissionModel;
         this.sampleNanos = sampleInterval.toNanos();
     }
 
@@ -137,6 +141,7 @@ public class EventBacktester {
         private final BigDecimal startingCash;
         private final SymbolState state;
         private final Portfolio portfolio;
+        private final ExecutionSimulator execution;
         private final List<Fill> fills = new ArrayList<>();
         private final List<EquityPoint> equityCurve = new ArrayList<>();
         private long nextSample;
@@ -150,6 +155,7 @@ public class EventBacktester {
             this.startingCash = startingCash;
             this.state = new SymbolState(symbol, STATE_TRADE_WINDOW);
             this.portfolio = new Portfolio(startingCash);
+            this.execution = new ExecutionSimulator(commissionModel);
             this.nextSample = start;
         }
 
@@ -159,14 +165,19 @@ public class EventBacktester {
                 sample(nextSample);
                 nextSample += sampleNanos;
             }
+            LocalDateTime time = toTime(event.timestamp());
             state.apply(event);
+            report(execution.onEvent(event, time));
             strategy.update(event, state);
             if (event.timestamp() < start) {
                 return;
             }
             int position = portfolio.getPosition();
-            algo.decide(event.timestamp(), symbol, position, strategy.targetPosition(position))
-                    .ifPresent(order -> fill(order, event.timestamp()));
+            List<Instruction> instructions = algo.decide(event.timestamp(), symbol, position,
+                    strategy.targetPosition(position), state.book());
+            for (Instruction instruction : instructions) {
+                report(execution.carryOut(instruction, state.book(), time));
+            }
         }
 
         EventBacktestResult finish(long end) {
@@ -174,10 +185,14 @@ public class EventBacktester {
                 sample(nextSample);
                 nextSample += sampleNanos;
             }
+            execution.cancelAll();
             int position = portfolio.getPosition();
             if (position != 0) {
                 Side side = position > 0 ? Side.SELL : Side.BUY;
-                fill(Order.market(CLOSING_ORDER_ID, symbol, side, Math.abs(position)), end);
+                Order closing = Order.market(CLOSING_ORDER_ID, symbol, side, Math.abs(position));
+                // not reported to the algorithm: the closing order is not one of its orders
+                execution.carryOut(new Instruction.Place(closing), state.book(), toTime(end))
+                        .forEach(this::book);
             }
             sample(end);
 
@@ -193,12 +208,17 @@ public class EventBacktester {
                     List.copyOf(fills), List.copyOf(equityCurve));
         }
 
-        private void fill(Order order, long timestamp) {
-            Optional<Fill> fill = engine.execute(order, state.book(), toTime(timestamp));
-            fill.ifPresent(f -> {
-                portfolio.apply(f);
-                fills.add(f);
-            });
+        /** Books the fills and tells the algorithm about them. */
+        private void report(List<Fill> newFills) {
+            for (Fill fill : newFills) {
+                book(fill);
+                algo.onFill(fill);
+            }
+        }
+
+        private void book(Fill fill) {
+            portfolio.apply(fill);
+            fills.add(fill);
         }
 
         private void sample(long timestamp) {

@@ -1,12 +1,14 @@
 package org.example.execution;
 
 import java.time.Duration;
-import java.util.Optional;
+import java.util.List;
+import org.example.marketdata.book.OrderBook;
 import org.example.order.Order;
 import org.example.order.Side;
 
 /**
- * Trades the whole difference to the target position at once, but not too often.
+ * Trades the whole difference to the target position at once with a market order, but not too
+ * often.
  *
  * <p>Two rules keep the number of trades, and so the commission, low. A difference smaller than
  * {@code tolerance} shares is not traded, like a thermostat ignores tiny temperature changes; a
@@ -40,21 +42,22 @@ public class ThrottledExecution implements ExecutionAlgo {
     }
 
     @Override
-    public Optional<Order> decide(
-            long timestamp, String symbol, int currentPosition, int targetPosition) {
+    public List<Instruction> decide(long timestamp, String symbol, int currentPosition,
+            int targetPosition, OrderBook book) {
         int difference = targetPosition - currentPosition;
         if (difference == 0) {
-            return Optional.empty();
+            return List.of();
         }
         if (Math.abs(difference) < tolerance && targetPosition != 0) {
-            return Optional.empty();
+            return List.of();
         }
         if (traded && timestamp - lastTradeTime < cooldownNanos) {
-            return Optional.empty();
+            return List.of();
         }
         traded = true;
         lastTradeTime = timestamp;
         Side side = difference > 0 ? Side.BUY : Side.SELL;
-        return Optional.of(Order.market(nextOrderId++, symbol, side, Math.abs(difference)));
+        Order order = Order.market(nextOrderId++, symbol, side, Math.abs(difference));
+        return List.of(new Instruction.Place(order));
     }
 }

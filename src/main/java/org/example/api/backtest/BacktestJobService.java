@@ -18,7 +18,6 @@ import org.example.backtest.EventBacktestResult;
 import org.example.backtest.EventBacktester;
 import org.example.backtest.TradingPeriod;
 import org.example.catalog.Catalog;
-import org.example.execution.BookExecutionEngine;
 import org.example.execution.ExecutionAlgo;
 import org.example.execution.TieredCommission;
 import org.example.filter.TradingFilter;
@@ -161,7 +160,7 @@ public class BacktestJobService {
                 commission.clearingPerShare(),
                 commission.makerRebatePerShare());
         EventBacktester backtester =
-                new EventBacktester(new BookExecutionEngine(commissionModel), SAMPLE_INTERVAL);
+                new EventBacktester(commissionModel, SAMPLE_INTERVAL);
 
         return new Prepared(symbol, period, startingCash,
                 new SignalMixStrategy(signals, filters, maxPosition), algo, backtester);

@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.example.execution.BookExecutionEngine;
 import org.example.execution.ExecutionAlgo;
 import org.example.execution.Fill;
 import org.example.execution.PerShareCommission;
@@ -48,8 +47,7 @@ class EventBacktesterTest {
             event(9, 46, EventType.ADD, 5, BookSide.BID, 100800, 1000));
 
     private final EventBacktestResult result = new EventBacktester(
-            new BookExecutionEngine(
-                    new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00"))),
+            new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00")),
             Duration.ofMinutes(1))
             .run(new ListMarketEventStore(events), "AAPL",
                     new TradingPeriod(DAY.withHour(9), DAY.withHour(9).withMinute(30),
@@ -100,8 +98,7 @@ class EventBacktesterTest {
     void progressGrowsToOne() {
         List<Double> reports = new ArrayList<>();
         new EventBacktester(
-                new BookExecutionEngine(
-                        new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00"))),
+                new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00")),
                 Duration.ofMinutes(1))
                 .run(new ListMarketEventStore(events), "AAPL",
                         new TradingPeriod(DAY.withHour(9), DAY.withHour(9).withMinute(30),

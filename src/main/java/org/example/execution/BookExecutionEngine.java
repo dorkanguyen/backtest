@@ -85,7 +85,7 @@ public class BookExecutionEngine {
                         RoundingMode.HALF_EVEN)
                 .stripTrailingZeros();
         BigDecimal commission = commissionModel.calculate(filled, averagePrice, Liquidity.TAKER);
-        return Optional.of(new Fill(order.symbol(), order.side(), filled, averagePrice, commission,
-                Liquidity.TAKER, time));
+        return Optional.of(new Fill(order.id(), order.symbol(), order.side(), filled,
+                averagePrice, commission, Liquidity.TAKER, time));
     }
 }

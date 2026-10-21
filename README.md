@@ -1,71 +1,69 @@
 # Backtest
 
-An event-driven backtesting engine for order book trading strategies, written in Java and built
-step by step as a learning project.
+I wanted to understand how trading firms test their ideas before risking money, so I started
+building my own backtesting engine in Java. Step by step, starting from a tiny "buy if the price
+went up" example on ten hand-typed candles, it grew into an event-driven engine that replays a full
+day of real Nasdaq data.
 
-It replays real exchange data message by message, rebuilds the limit order book, lets a set of
-configurable signals decide on a target position, and simulates the resulting market and limit
-orders against the book (including the queue position of limit orders) to measure PnL, equity and
-drawdown.
+It reads the exchange's raw messages one by one, rebuilds the order book, asks a few signals what
+they think the price will do, and simulates the trades that follow: market orders that take what
+the book offers, and limit orders that wait in line like everyone else. At the end it tells me how
+much the strategy made or lost, how much went to commission, and how deep the worst drawdown was.
 
-> **Status:** work in progress. The event-driven backtest runs end to end on real Nasdaq data with
-> market or limit orders and can be started over a REST API. Next: cost-aware trading and more
-> trading days; a React frontend comes later.
+> **Where it stands:** the backtest runs end to end on real data, with market or limit orders, and
+> can be started through a REST API. Next on my list: trading only when it is worth the cost, and
+> testing on more days. A React frontend will come after that.
 
-## Features
+## What it can do
 
-**Market data**
+**Read real market data.** Nasdaq publishes sample TotalView-ITCH 5.0 files: every order placed,
+changed, executed or cancelled on the exchange in a day. The parser streams through the gzip file
+(about 590 million messages, 18.7 GB unpacked) and keeps the events of 22 liquid symbols, turning
+them into five simple event types: `ADD`, `EXECUTE`, `CANCEL`, `DELETE` and `TRADE`. One day is
+about 67 million events, stored in SQLite.
 
-- Streaming parser for **Nasdaq TotalView-ITCH 5.0** files (reads the gzip file on the fly)
-- Converts exchange messages into normalized market events: `ADD`, `EXECUTE`, `CANCEL`, `DELETE`, `TRADE`
-- Stores events in SQLite (batched writes; tested with 67 million events for 22 symbols in one day)
-- Rebuilds the full limit order book event by event (order-by-order, any depth)
-- Tracks recent trades in a sliding window: aggressive buy / sell volume, imbalance, VWAP, trade count
-- Order flow imbalance (OFI) at the best bid and ask
+**Rebuild the order book.** Replaying the events in order rebuilds the full book at any moment,
+order by order and at any depth. Next to it, a trade flow tracker remembers the last few seconds
+of trades: who was in a hurry to buy or sell, the VWAP, how many trades happened. There is also an
+order flow imbalance (OFI) measure at the best bid and ask.
 
-**Fair price models**
+**Estimate a fair price.** Mid price, microprice, multi-level price, decaying levels (deeper levels
+count less) and impact price (the average price of actually buying or selling a given quantity).
 
-- Mid price, microprice, multi-level price
-- Decaying levels (deeper levels count less)
-- Impact price (average price of buying and selling a given quantity)
+**Turn opinions into a position.** Each *signal* gives an opinion from −1 (strongly sell) to +1
+(strongly buy). The current ones are impact price, decaying levels, back to VWAP and order flow
+imbalance. *Filters* pause trading when conditions are bad (a quiet market or a wide spread). The
+signal mix strategy takes a weighted average of the opinions and turns it into a target position.
 
-**Signals, filters and strategy**
+Every signal, filter and execution algorithm describes itself: its name, what it does, and each
+setting with a default, a minimum and a maximum. A user interface can build its settings page from
+that list, so adding a new signal does not mean touching the frontend.
 
-- **Signals** give an opinion from −1 (strongly sell) to +1 (strongly buy):
-  impact price, decaying levels, back to VWAP, order flow imbalance
-- **Filters** stop trading in bad conditions (quiet market, wide spread); the position is then kept
-- The **signal mix strategy** averages the opinions with user-chosen weights and scales the result
-  to a target position
-- Every signal, filter and execution algorithm **describes itself** (name, explanation, settings
-  with default, min and max), so a user interface can build its settings page automatically
+**Trade it, as realistically as I can.** The strategy only says *what* position it wants. A
+separate execution algorithm decides *how* to get there, by placing and cancelling orders:
 
-**Execution and backtest**
+- **Throttled** uses market orders. It ignores small changes and waits between trades to save
+  commission. Market orders walk the real book level by level, so a big order gets a worse average
+  price, and a thin book means a partial fill.
+- **Join best quote** uses limit orders. It keeps one order at the best bid or ask, leaves it alone
+  while it is still good, and moves it when someone offers a better price or the target changes.
 
-- Execution algorithms turn the target position into instructions (place or cancel an order) and
-  are told about every fill
-- **Throttled execution** (market orders): ignores small position changes and waits between trades
-  to save commission
-- **Join best quote** (limit orders): rests one order at the best bid or ask, leaves it alone while
-  it is still good, and moves it when others offer a better price or the target changes
-- Market orders are filled from the real book, level by level (partial fills when the book is thin)
-- Limit orders wait in the queue: the simulator follows the orders that were there before ours
-  (order by order, from the L3 data) and fills ours only when they are gone and someone trades at
-  our price, or the price trades through us (a cautious rule; hidden trades are ignored)
-- Every fill records whether it added liquidity (maker) or took it (taker)
-- Tiered commission: broker fee per share with a minimum, plus exchange and clearing fees per share
-  (takers pay the exchange fee, makers get a rebate)
-  (default: $0.0035 per share with a $0.35 minimum, $0.003 exchange and $0.0002 clearing fee, so
-  100 shares cost $0.67)
-- Warm-up from the pre-market open, trading in a chosen period, position closed at the end
-- Results: PnL, total commission, max drawdown, every fill, equity curve sampled every second
-- `BigDecimal` for all money; prices from the exchange are kept as exact integers
+The hardest part was the queue. A limit order is filled only after everyone who was there before
+it. Because the data is order by order, the simulator knows exactly which orders were ahead of mine
+and follows them until they are executed or cancelled. Even then it is cautious: my order is filled
+only when someone trades at my price after the queue in front of me is gone, or when the price
+trades through me. Hidden trades do not count.
 
-**REST API**
+**Count the costs.** The commission model follows a tiered broker plan: a broker fee per share with
+a minimum, plus exchange and clearing fees. Takers pay the exchange fee and makers get a rebate,
+so every fill records which side of that it was on. By default 100 shares cost $0.67 as a taker
+and $0.17 as a maker. All money is `BigDecimal`, and exchange prices stay exact integers.
 
-- Catalog of all signals, filters and execution algorithms with their settings
-- Backtests run as background jobs with progress reporting
+**Report the result.** PnL, total commission, max drawdown, every fill, and an equity curve sampled
+every second. The backtest warms up from the pre-market open, trades only in the chosen period, and
+closes the position at the end.
 
-## Architecture
+## How it fits together
 
 ```
 ITCH file ──► market events (SQLite) ──► replay ──► order book + trade flow
@@ -82,7 +80,7 @@ ITCH file ──► market events (SQLite) ──► replay ──► order book
         fill from the order book ──► portfolio ──► PnL / equity / drawdown
 ```
 
-In more detail, the execution step works like this:
+The execution step in a bit more detail:
 
 ```
 execution algorithm ──► instructions: place / cancel order
@@ -93,17 +91,17 @@ execution algorithm ──► instructions: place / cancel order
                        limit order:  waits in the queue (maker)
 ```
 
-Design rules:
+A few rules I tried to stick to:
 
-- A **strategy never trades directly.** It only returns a target position; a separate execution
-  algorithm decides when and how to trade.
-- Each concern lives in its own package, and the core knows nothing about Spring.
-- Everything that will get more advanced later sits behind an interface with a simple first
-  implementation (signals, filters, execution algorithms, commission, event storage).
-- The same strategy code should later run on live data; only the data source and the execution
+- **The strategy never trades directly.** It only returns a target position. That way it can never
+  buy twice by accident, and the "how" can change without touching the "what".
+- Each part lives in its own package, and the core knows nothing about Spring.
+- Anything that will get more advanced later sits behind an interface with a simple first version
+  (signals, filters, execution algorithms, commission, event storage).
+- The same strategy code should one day run on live data. Only the data source and the execution
   layer would change.
 
-| Package | Responsibility |
+| Package | What lives there |
 |---|---|
 | `marketdata` | Market events and their storage (SQLite) |
 | `marketdata.itch` | Nasdaq ITCH 5.0 reader, parser and command line importer |
@@ -121,17 +119,14 @@ Design rules:
 | `backtest` | Event-driven backtest loop and results |
 | `catalog` | The available signals, filters and execution algorithms |
 | `api` | REST endpoints (Spring Boot) |
-| `candle` | The first, candle-based learning version, kept separately |
+| `candle` | The first, candle-based version I learned on, kept separately |
 
-## Tech stack
+## Built with
 
-- Java 25, Maven
-- Spring Boot 4.1 (REST API)
-- SQLite
-- JUnit 5 and AssertJ (175 unit tests)
-- Checkstyle (Google Java Style with 4-space indentation)
+Java 25, Maven, Spring Boot 4.1, SQLite, JUnit 5 and AssertJ (175 unit tests), and Checkstyle
+(Google Java Style with 4-space indentation).
 
-## Getting started
+## Running it yourself
 
 ### Requirements
 
@@ -141,8 +136,8 @@ Design rules:
 
 ### Importing Nasdaq ITCH data
 
-Market data is **not included** in this repository. Nasdaq publishes sample TotalView-ITCH 5.0
-files (one full trading day each) at <https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/>. They are large
+The market data is **not in this repository**. Nasdaq publishes sample TotalView-ITCH 5.0 files
+(one full trading day each) at <https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/>. They are large
 (several GB compressed) and subject to Nasdaq's terms of use.
 
 The importer keeps a fixed list of 22 liquid symbols (see `ItchImporter.SYMBOLS`) and writes their
@@ -153,8 +148,8 @@ class (for example from IntelliJ IDEA) with three program arguments:
 <itch-file.gz> <trading-date yyyy-mm-dd> <database-file>
 ```
 
-One trading day takes a few minutes and about 4.6 GB of disk space. Re-running the import for the
-same day replaces that day's events.
+One trading day takes a few minutes and about 4.6 GB of disk space. Running the import again for
+the same day replaces that day's events.
 
 ### Build and run
 
@@ -195,23 +190,27 @@ curl -X POST http://localhost:8080/api/backtests \
       }'
 ```
 
-Missing settings get their default values. To trade with limit orders instead, use
-`"execution": { "id": "joinBestQuote" }`. Then ask for the job until its status is `DONE`:
+Anything you leave out gets its default value. For limit orders, use
+`"execution": { "id": "joinBestQuote" }`. Then check the job until its status is `DONE`:
 
 ```bash
 curl http://localhost:8080/api/backtests/<job-id>
 ```
 
-A wrong setting (for example an unknown signal id) is rejected at once with `400 Bad Request`.
+A wrong setting (for example an unknown signal id) is rejected right away with `400 Bad Request`.
 
-## What the first results show
+## What I have learned so far
 
-On one day of data (2025-12-09), the signals point in the right direction on average, but they
-predict moves of only a fraction of a cent over the next seconds. Crossing the spread with market
-orders costs more than that, so the market-order version loses money even without any commission.
+The honest answer: the strategy does not make money yet, and the numbers explain why.
 
-With limit orders the strategy earns the spread instead of paying it, and it becomes profitable
-before commission on all three tested symbols, but commission still takes more than it earns:
+On one day of data (2025-12-09) the signals point in the right direction on average, but they only
+predict moves of a fraction of a cent over the next few seconds. A market order has to cross the
+spread, which is usually 1 to 4 cents. So the market-order version loses money even before any
+commission.
+
+Limit orders flip that around: instead of paying the spread, the strategy earns it. Before
+commission it was profitable on all three symbols I tested. Commission still takes more than it
+earns, though.
 
 PnL in USD, 09:35–15:55, signal mix 50/30/20, default filters, max position 100, default tiered
 commission:
@@ -228,8 +227,9 @@ commission:
 | QQQ | throttled, 300 s | 77 | 35.29 | +82.00 | +46.71 |
 | QQQ | join best quote | 171 | 52.56 | +31.67 | −20.89 |
 
-This is one day of data, so it is not a reliable conclusion, only a direction for the next steps:
-cost-aware trading, charging the minimum commission per order instead of per fill, and more data.
+One day is far too little to draw real conclusions, but it shows where to look next: trade only
+when the expected move is bigger than the cost, charge the minimum commission once per order (as
+brokers do) instead of once per fill, and test on more days.
 
 ## Roadmap
 

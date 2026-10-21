@@ -2,6 +2,7 @@ package org.example.api.catalog;
 
 import java.util.List;
 import org.example.catalog.Catalog;
+import org.example.execution.JoinBestQuoteDefinition;
 import org.example.execution.ThrottledExecutionDefinition;
 import org.example.filter.SpreadFilterDefinition;
 import org.example.filter.TradeCountFilterDefinition;
@@ -38,6 +39,7 @@ public class CatalogConfig {
                         new TradeCountFilterDefinition(),
                         new SpreadFilterDefinition()),
                 List.of(
-                        new ThrottledExecutionDefinition()));
+                        new ThrottledExecutionDefinition(),
+                        new JoinBestQuoteDefinition()));
     }
 }

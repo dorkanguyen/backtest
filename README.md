@@ -55,9 +55,11 @@ only when someone trades at my price after the queue in front of me is gone, or 
 trades through me. Hidden trades do not count.
 
 **Count the costs.** The commission model follows a tiered broker plan: a broker fee per share with
-a minimum, plus exchange and clearing fees. Takers pay the exchange fee and makers get a rebate,
-so every fill records which side of that it was on. By default 100 shares cost $0.67 as a taker
-and $0.17 as a maker. All money is `BigDecimal`, and exchange prices stay exact integers.
+a minimum per order, plus exchange and clearing fees per share. Takers pay the exchange fee and
+makers get a rebate, so every fill records which side of that it was on. By default 100 shares cost
+$0.67 as a taker and $0.17 as a maker. When a limit order is filled in parts, the broker minimum is
+charged once for the whole order, not once per part, just like a real broker does it. All money is
+`BigDecimal`, and exchange prices stay exact integers.
 
 **Report the result.** PnL, total commission, max drawdown, every fill, and an equity curve sampled
 every second. The backtest warms up from the pre-market open, trades only in the chosen period, and
@@ -123,7 +125,7 @@ A few rules I tried to stick to:
 
 ## Built with
 
-Java 25, Maven, Spring Boot 4.1, SQLite, JUnit 5 and AssertJ (175 unit tests), and Checkstyle
+Java 25, Maven, Spring Boot 4.1, SQLite, JUnit 5 and AssertJ (179 unit tests), and Checkstyle
 (Google Java Style with 4-space indentation).
 
 ## Running it yourself
@@ -219,17 +221,18 @@ commission:
 |---|---|---:|---:|---:|---:|
 | AAPL | throttled, 30 s | 746 | 368.86 | −406.63 | −775.49 |
 | AAPL | throttled, 300 s | 77 | 38.51 | −281.89 | −320.40 |
-| AAPL | join best quote | 396 | 122.60 | +31.17 | −91.43 |
+| AAPL | join best quote | 396 | 97.88 | +31.17 | −66.71 |
 | NVDA | throttled, 30 s | 759 | 357.79 | −53.13 | −410.92 |
 | NVDA | throttled, 300 s | 77 | 36.23 | −121.81 | −158.04 |
-| NVDA | join best quote | 506 | 156.82 | +17.27 | −139.55 |
+| NVDA | join best quote | 506 | 119.12 | +17.27 | −101.85 |
 | QQQ | throttled, 30 s | 760 | 351.59 | −44.44 | −396.03 |
 | QQQ | throttled, 300 s | 77 | 35.29 | +82.00 | +46.71 |
-| QQQ | join best quote | 171 | 52.56 | +31.67 | −20.89 |
+| QQQ | join best quote | 171 | 50.46 | +31.67 | −18.79 |
 
 One day is far too little to draw real conclusions, but it shows where to look next: trade only
-when the expected move is bigger than the cost, charge the minimum commission once per order (as
-brokers do) instead of once per fill, and test on more days.
+when the expected move is bigger than the cost, and test on more days. Charging the broker minimum
+once per order instead of once per fill already cut the commission of the limit order runs by up
+to a quarter.
 
 ## Roadmap
 
@@ -241,8 +244,8 @@ brokers do) instead of once per fill, and test on more days.
 - [x] REST API with background jobs
 - [x] Realistic tiered commission (broker, exchange and clearing fees)
 - [x] Limit orders with queue position simulation, maker/taker fees, join best quote algorithm
+- [x] Minimum commission per order instead of per fill (as brokers charge it)
 - [ ] Cost-aware trading: trade only when the expected move beats spread and commission
-- [ ] Minimum commission per order instead of per fill (as brokers charge it)
 - [ ] React frontend: settings built from the catalog, equity chart, results and fills
 - [ ] More trading days, out-of-sample tests and parameter optimization
 - [ ] Paper trading

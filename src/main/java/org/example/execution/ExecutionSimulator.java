@@ -76,7 +76,8 @@ public class ExecutionSimulator {
             QueueSimulator queue = queues.next();
             long filled = queue.apply(event);
             if (filled > 0) {
-                fills.add(makerFill(queue.order(), (int) filled, time));
+                int alreadyFilled = (int) (queue.order().quantity() - queue.remaining() - filled);
+                fills.add(makerFill(queue.order(), (int) filled, alreadyFilled, time));
             }
             if (queue.isFilled()) {
                 queues.remove();
@@ -110,10 +111,11 @@ public class ExecutionSimulator {
         return List.of();
     }
 
-    private Fill makerFill(Order order, int quantity, LocalDateTime time) {
+    private Fill makerFill(Order order, int quantity, int alreadyFilled, LocalDateTime time) {
         // the limit price is in 1/10000 dollars: 4 decimal places
         BigDecimal price = BigDecimal.valueOf(order.limitPrice(), 4);
-        BigDecimal commission = commissionModel.calculate(quantity, price, Liquidity.MAKER);
+        BigDecimal commission =
+                commissionModel.calculate(quantity, price, Liquidity.MAKER, alreadyFilled);
         return new Fill(order.id(), order.symbol(), order.side(), quantity, price, commission,
                 Liquidity.MAKER, time);
     }

@@ -77,8 +77,12 @@ class EventBacktesterLimitOrderTest {
 
     @Test
     void pnlIsOnlyTheCommission() {
-        // bought and sold at 10.00; three fills of at least 1.00 commission each
-        assertThat(result.pnl()).isEqualByComparingTo("-3.00");
+        // bought and sold at 10.00; the minimum of 1.00 is paid once by each of the two orders
+        List<Fill> fills = result.fills();
+        assertThat(fills.get(0).commission()).isEqualByComparingTo("1.00");
+        assertThat(fills.get(1).commission()).isEqualByComparingTo("0");
+        assertThat(fills.get(2).commission()).isEqualByComparingTo("1.00");
+        assertThat(result.pnl()).isEqualByComparingTo("-2.00");
     }
 
     @Test

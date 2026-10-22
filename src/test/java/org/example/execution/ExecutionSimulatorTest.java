@@ -82,6 +82,25 @@ class ExecutionSimulatorTest {
     }
 
     @Test
+    void brokerMinimumIsChargedOnlyOnTheFirstPartOfAnOrder() {
+        // 1 cent per share, at least 1.00 per order, no other fees
+        ExecutionSimulator withMinimum = new ExecutionSimulator(new TieredCommission(
+                new BigDecimal("0.01"), new BigDecimal("1.00"), BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO));
+        withMinimum.carryOut(new Instruction.Place(Order.limit(7, "AAPL", Side.BUY, 200, BID)),
+                book, TIME);
+        onEvent(withMinimum, EventType.EXECUTE, 1, BID, 300);
+        onEvent(withMinimum, EventType.ADD, 2, BID, 500);
+
+        List<Fill> first = onEvent(withMinimum, EventType.EXECUTE, 2, BID, 50);
+        List<Fill> second = onEvent(withMinimum, EventType.EXECUTE, 2, BID, 150);
+
+        // 50 shares: 0.50 raised to the minimum; then the order's fee grows from 1.00 to 2.00
+        assertThat(first.get(0).commission()).isEqualByComparingTo("1.00");
+        assertThat(second.get(0).commission()).isEqualByComparingTo("1.00");
+    }
+
+    @Test
     void cancelledOrderIsNeverFilled() {
         place(Order.limit(7, "AAPL", Side.BUY, 100, BID));
 
@@ -121,9 +140,14 @@ class ExecutionSimulatorTest {
 
     /** Applies an event of the bid side to the book and to the simulator. */
     private List<Fill> onEvent(EventType type, long orderId, long price, long quantity) {
+        return onEvent(simulator, type, orderId, price, quantity);
+    }
+
+    private List<Fill> onEvent(ExecutionSimulator target, EventType type, long orderId,
+            long price, long quantity) {
         MarketEvent event = event(type, orderId, BookSide.BID, price, quantity);
         book.apply(event);
-        return simulator.onEvent(event, TIME);
+        return target.onEvent(event, TIME);
     }
 
     private static MarketEvent event(

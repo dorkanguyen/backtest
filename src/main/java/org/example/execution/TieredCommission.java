@@ -6,10 +6,15 @@ import java.math.BigDecimal;
  * Commission made of a broker fee with a minimum, plus exchange and clearing fees per share.
  *
  * <p>This is how brokers with tiered pricing (for example Interactive Brokers "Tiered") charge:
- * the broker fee has a minimum per fill, while the exchange and clearing fees are passed on per
+ * the broker fee has a minimum per order, while the exchange and clearing fees are passed on per
  * share. The exchange charges a fee to takers and pays a rebate to makers. Example with 0.0035
  * per share and 0.35 minimum, 0.003 taker fee, 0.002 maker rebate and 0.0002 clearing fee:
  * 100 shares cost 0.35 + 0.30 + 0.02 = 0.67 as a taker and 0.35 - 0.20 + 0.02 = 0.17 as a maker.
+ *
+ * <p>When an order is filled in parts, only the first fill pays the broker minimum; later fills
+ * pay how much the broker fee of the whole order grows. With 0.0035 per share and 0.35 minimum,
+ * fills of 30, 30 and 40 shares pay a broker fee of 0.35, 0 and 0: in total 0.35, the same as
+ * one fill of 100 shares.
  *
  * <p>With zero exchange and clearing fees this is the same as {@link PerShareCommission}.
  *
@@ -30,7 +35,7 @@ public class TieredCommission implements CommissionModel {
      * Creates a tiered commission model.
      *
      * @param brokerPerShare broker fee per share, for example 0.0035
-     * @param brokerMinimum least broker fee of one fill, for example 0.35
+     * @param brokerMinimum least broker fee of one order, for example 0.35
      * @param exchangePerShare exchange fee per share paid by takers, for example 0.003
      * @param clearingPerShare clearing fee per share, for example 0.0002
      * @param makerRebatePerShare exchange rebate per share paid to makers, for example 0.002
@@ -47,18 +52,25 @@ public class TieredCommission implements CommissionModel {
     }
 
     @Override
-    public BigDecimal calculate(int quantity, BigDecimal price, Liquidity liquidity) {
+    public BigDecimal calculate(int quantity, BigDecimal price, Liquidity liquidity,
+            int alreadyFilled) {
         BigDecimal shares = BigDecimal.valueOf(quantity);
 
-        BigDecimal brokerFee = brokerPerShare.multiply(shares);
-        if (brokerFee.compareTo(brokerMinimum) < 0) {
-            brokerFee = brokerMinimum;
-        }
+        // the minimum applies to the whole order: charge how much the order's broker fee grows
+        BigDecimal brokerFee = brokerFeeOfOrder(alreadyFilled + quantity)
+                .subtract(brokerFeeOfOrder(alreadyFilled));
 
         BigDecimal exchangeFee =
                 liquidity == Liquidity.TAKER ? exchangePerShare : makerRebatePerShare.negate();
         BigDecimal passedOnFees = exchangeFee.add(clearingPerShare).multiply(shares);
         return brokerFee.add(passedOnFees);
+    }
+
+    private BigDecimal brokerFeeOfOrder(int filledShares) {
+        if (filledShares == 0) {
+            return BigDecimal.ZERO;
+        }
+        return brokerPerShare.multiply(BigDecimal.valueOf(filledShares)).max(brokerMinimum);
     }
 
     private static BigDecimal notNegative(BigDecimal fee, String name) {

@@ -8,6 +8,7 @@ import org.example.filter.SpreadFilterDefinition;
 import org.example.filter.TradeCountFilterDefinition;
 import org.example.signal.DecayingLevelSignalDefinition;
 import org.example.signal.ImpactPriceSignalDefinition;
+import org.example.signal.MomentumSignalDefinition;
 import org.example.signal.OfiSignalDefinition;
 import org.example.signal.TradeImbalanceSignalDefinition;
 import org.example.signal.VwapSignalDefinition;
@@ -36,7 +37,8 @@ public class CatalogConfig {
                         new DecayingLevelSignalDefinition(),
                         new VwapSignalDefinition(),
                         new OfiSignalDefinition(),
-                        new TradeImbalanceSignalDefinition()),
+                        new TradeImbalanceSignalDefinition(),
+                        new MomentumSignalDefinition()),
                 List.of(
                         new TradeCountFilterDefinition(),
                         new SpreadFilterDefinition()),

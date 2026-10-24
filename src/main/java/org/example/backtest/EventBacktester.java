@@ -121,7 +121,7 @@ public class EventBacktester {
     }
 
     /** Converts a New York time to nanoseconds since 1970 UTC. */
-    static long toNanos(LocalDateTime time) {
+    public static long toNanos(LocalDateTime time) {
         Instant instant = time.atZone(EXCHANGE_ZONE).toInstant();
         return instant.getEpochSecond() * 1_000_000_000L + instant.getNano();
     }

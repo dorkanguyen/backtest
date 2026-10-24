@@ -9,6 +9,7 @@ import org.example.filter.TradeCountFilterDefinition;
 import org.example.signal.DecayingLevelSignalDefinition;
 import org.example.signal.ImpactPriceSignalDefinition;
 import org.example.signal.OfiSignalDefinition;
+import org.example.signal.TradeImbalanceSignalDefinition;
 import org.example.signal.VwapSignalDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,7 +35,8 @@ public class CatalogConfig {
                         new ImpactPriceSignalDefinition(),
                         new DecayingLevelSignalDefinition(),
                         new VwapSignalDefinition(),
-                        new OfiSignalDefinition()),
+                        new OfiSignalDefinition(),
+                        new TradeImbalanceSignalDefinition()),
                 List.of(
                         new TradeCountFilterDefinition(),
                         new SpreadFilterDefinition()),

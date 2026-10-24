@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -38,19 +39,22 @@ import org.junit.jupiter.api.Test;
 class SignalEvaluatorTest {
 
     private static final double NAN = Double.NaN;
+    private static final long SECOND = Duration.ofSeconds(1).toNanos();
+    private static final LocalDate DAY = LocalDate.of(2025, 12, 9);
 
     private final SignalEvaluator evaluator = new SignalEvaluator(Duration.ofSeconds(1),
-            List.of(Duration.ofSeconds(1), Duration.ofSeconds(2)), 0.3);
+            List.of(Duration.ofSeconds(1), Duration.ofSeconds(2)), 0.3, 2);
 
-    private final SignalEvaluationReport report = evaluator.analyse("AAPL", new SignalSamples(
-            List.of("up", "wrong"), Duration.ofSeconds(1).toNanos(),
-            new double[] {100000, 100100, 100100, 100000, NAN},
-            new double[] {50, 50, 100, 50, NAN},
-            new double[][] {{1, 0, -0.5, 0.2, 0}, {-1, 0, 0.5, -0.2, 0}}));
+    private final SignalEvaluationReport report = evaluator.analyse("AAPL", List.of(DAY),
+            List.of(new SignalSamples(
+                    List.of("up", "wrong"), SECOND,
+                    new double[] {100000, 100100, 100100, 100000, NAN},
+                    new double[] {50, 50, 100, 50, NAN},
+                    new double[][] {{1, 0, -0.5, 0.2, 0}, {-1, 0, 0.5, -0.2, 0}})));
 
     @Test
     void groupsComeAloneThenInPairsThenAllTogether() {
-        assertThat(SignalEvaluator.groups(3)).containsExactly(
+        assertThat(SignalEvaluator.groups(3, 3)).containsExactly(
                 List.of(0), List.of(1), List.of(2),
                 List.of(0, 1), List.of(0, 2), List.of(1, 2),
                 List.of(0, 1, 2));
@@ -141,7 +145,7 @@ class SignalEvaluatorTest {
                 event(day.plusSeconds(1), 3, BookSide.BID, 100100),
                 event(day.plusSeconds(2).plusNanos(500_000_000), 4, BookSide.ASK, 100150));
         SignalEvaluator oneSecond = new SignalEvaluator(Duration.ofSeconds(1),
-                List.of(Duration.ofSeconds(1)), 0.3);
+                List.of(Duration.ofSeconds(1)), 0.3, 2);
 
         SignalEvaluationReport replayed = oneSecond.evaluate(new ListMarketEventStore(events),
                 "AAPL", new TradingPeriod(day.minusMinutes(1), day, day.plusSeconds(4)),
@@ -160,14 +164,105 @@ class SignalEvaluatorTest {
     @Test
     void rejectsHorizonThatIsNotWholeSampleIntervals() {
         assertThatThrownBy(() -> new SignalEvaluator(Duration.ofSeconds(2),
-                List.of(Duration.ofSeconds(3)), 0.3))
+                List.of(Duration.ofSeconds(3)), 0.3, 2))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsThresholdOfOne() {
         assertThatThrownBy(() -> new SignalEvaluator(Duration.ofSeconds(1),
-                List.of(Duration.ofSeconds(1)), 1))
+                List.of(Duration.ofSeconds(1)), 1, 2))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsMaxGroupSizeOfZero() {
+        assertThatThrownBy(() -> new SignalEvaluator(Duration.ofSeconds(1),
+                List.of(Duration.ofSeconds(1)), 0.3, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void maxGroupSizeLeavesOutLargerGroups() {
+        assertThat(SignalEvaluator.groups(3, 2)).containsExactly(
+                List.of(0), List.of(1), List.of(2),
+                List.of(0, 1), List.of(0, 2), List.of(1, 2));
+        assertThat(SignalEvaluator.groups(2, 5)).hasSize(3);
+    }
+
+    @Test
+    void singleSignalsOnlyWithMaxGroupSizeOne() {
+        SignalEvaluator singles = new SignalEvaluator(Duration.ofSeconds(1),
+                List.of(Duration.ofSeconds(1)), 0.3, 1);
+
+        SignalEvaluationReport onlySingles = singles.analyse("AAPL", List.of(DAY),
+                List.of(new SignalSamples(List.of("a", "b", "c"), SECOND,
+                        new double[] {100000, 100100}, new double[] {50, 50},
+                        new double[][] {{1, 1}, {0, 0}, {-1, -1}})));
+
+        assertThat(onlySingles.groups()).extracting(GroupResult::signals)
+                .containsExactly(List.of("a"), List.of("b"), List.of("c"));
+    }
+
+    /**
+     * Two days, "up" always says buy. Day 1: 10.00 then 10.01; day 2: 10.00 then 9.99. If the
+     * days were glued together, 10.01 -> 10.00 would wrongly count as a third move.
+     */
+    @Test
+    void movesStayInsideTheirDayAndEveryDayIsShown() {
+        LocalDate secondDay = DAY.plusDays(1);
+        SignalEvaluationReport twoDays = evaluator.analyse("AAPL", List.of(DAY, secondDay),
+                List.of(
+                        new SignalSamples(List.of("up"), SECOND, new double[] {100000, 100100},
+                                new double[] {50, 50}, new double[][] {{1, 1}}),
+                        new SignalSamples(List.of("up"), SECOND, new double[] {100000, 99900},
+                                new double[] {50, 50}, new double[][] {{1, 1}})));
+        HorizonResult oneSecond = twoDays.groups().get(0).horizons().get(0);
+
+        assertThat(twoDays.days()).containsExactly(DAY, secondDay);
+        assertThat(oneSecond.activeSamples()).isEqualTo(2);
+        assertThat(oneSecond.hitRate()).isEqualTo(0.5);
+        assertThat(oneSecond.averageMoveCents()).isCloseTo(0, within(1e-12));
+        assertThat(oneSecond.dailyMoveCents()).containsExactly(1.0, -1.0);
+        assertThat(oneSecond.goodDays()).isEqualTo(1);
+    }
+
+    @Test
+    void replaysEveryDayWithNewSignals() {
+        LocalDateTime day = LocalDateTime.of(2025, 12, 9, 9, 30);
+        List<MarketEvent> events = List.of(
+                event(day.minusMinutes(1), 1, BookSide.BID, 100000),
+                event(day.minusMinutes(1), 2, BookSide.ASK, 100200),
+                event(day.plusDays(1).minusMinutes(1), 3, BookSide.BID, 100000),
+                event(day.plusDays(1).minusMinutes(1), 4, BookSide.ASK, 100200));
+        int[] created = {0};
+
+        SignalEvaluationReport twoDays = evaluator.evaluate(new ListMarketEventStore(events),
+                "AAPL",
+                List.of(new TradingPeriod(day.minusMinutes(1), day, day.plusSeconds(4)),
+                        new TradingPeriod(day.plusDays(1).minusMinutes(1), day.plusDays(1),
+                                day.plusDays(1).plusSeconds(4))),
+                () -> {
+                    created[0]++;
+                    return Map.of("bidAboveTen", new BidAboveTenSignal());
+                });
+
+        assertThat(created[0]).isEqualTo(2);
+        assertThat(twoDays.days()).containsExactly(DAY, DAY.plusDays(1));
+        assertThat(twoDays.sampleCount()).isEqualTo(8);
+    }
+
+    @Test
+    void rejectsDifferentSignalsOnDifferentDays() {
+        LocalDateTime day = LocalDateTime.of(2025, 12, 9, 9, 30);
+        List<String> names = List.of("a", "b");
+        int[] call = {0};
+
+        assertThatThrownBy(() -> evaluator.evaluate(new ListMarketEventStore(List.of()), "AAPL",
+                List.of(new TradingPeriod(day.minusMinutes(1), day, day.plusSeconds(4)),
+                        new TradingPeriod(day.plusDays(1).minusMinutes(1), day.plusDays(1),
+                                day.plusDays(1).plusSeconds(4))),
+                () -> Map.of(names.get(call[0]++), new BidAboveTenSignal())))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

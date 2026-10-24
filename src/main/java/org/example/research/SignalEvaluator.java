@@ -1,10 +1,12 @@
 package org.example.research;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.example.backtest.EventBacktester;
 import org.example.backtest.TradingPeriod;
 import org.example.marketdata.MarketEvent;
@@ -19,11 +21,12 @@ import org.example.signal.Signal;
 /**
  * Measures how well signals predict the price, without trading.
  *
- * <p>The events of one symbol are replayed. At every sample time the opinion of every signal and
- * the mid price are written down. Afterwards every sample is compared with the mid price some
- * time later (the horizon), for every group of signals: every signal alone, every pair, and so
- * on, each group mixed with equal weights. This shows which signals know something and whether
- * a signal adds anything to the others.
+ * <p>The events of one symbol are replayed, one day at a time, each day with new signals. At
+ * every sample time the opinion of every signal and the mid price are written down. Afterwards
+ * every sample is compared with the mid price some time later (the horizon) on the same day,
+ * for every group of signals: every signal alone, every pair, and so on, each group mixed with
+ * equal weights. This shows which signals know something, whether a signal adds anything to
+ * the others, and whether a result holds on every day or was only luck on one of them.
  */
 public class SignalEvaluator {
 
@@ -39,6 +42,7 @@ public class SignalEvaluator {
     private final long sampleNanos;
     private final List<Duration> horizons;
     private final double convictionThreshold;
+    private final int maxGroupSize;
 
     /**
      * Creates the evaluator.
@@ -49,10 +53,12 @@ public class SignalEvaluator {
      *         each must be a whole number of sample intervals
      * @param convictionThreshold an opinion counts as active only if it is stronger than this,
      *         from 0 (inclusive) to 1 (exclusive), for example 0.3
+     * @param maxGroupSize the largest group of signals to evaluate, from 1 to
+     *         {@link #MAX_SIGNALS}: 1 evaluates every signal alone, 2 also every pair
      * @throws IllegalArgumentException if a setting is not allowed
      */
     public SignalEvaluator(Duration sampleInterval, List<Duration> horizons,
-            double convictionThreshold) {
+            double convictionThreshold, int maxGroupSize) {
         if (sampleInterval.isNegative() || sampleInterval.isZero()) {
             throw new IllegalArgumentException(
                     "Sample interval must be positive: " + sampleInterval);
@@ -71,13 +77,18 @@ public class SignalEvaluator {
             throw new IllegalArgumentException(
                     "Conviction threshold must be from 0 to below 1: " + convictionThreshold);
         }
+        if (maxGroupSize < 1 || maxGroupSize > MAX_SIGNALS) {
+            throw new IllegalArgumentException(
+                    "Max group size must be from 1 to " + MAX_SIGNALS + ": " + maxGroupSize);
+        }
         this.sampleNanos = sampleInterval.toNanos();
         this.horizons = horizons.stream().sorted().toList();
         this.convictionThreshold = convictionThreshold;
+        this.maxGroupSize = maxGroupSize;
     }
 
     /**
-     * Replays one period and evaluates the signals.
+     * Replays one day and evaluates the signals.
      *
      * @param store where the events are read from
      * @param symbol the symbol, for example {@code QQQ}
@@ -89,89 +100,154 @@ public class SignalEvaluator {
      */
     public SignalEvaluationReport evaluate(MarketEventStore store, String symbol,
             TradingPeriod period, Map<String, Signal> signals) {
-        if (signals.isEmpty() || signals.size() > MAX_SIGNALS) {
-            throw new IllegalArgumentException(
-                    "Need 1 to " + MAX_SIGNALS + " signals: " + signals.size());
-        }
-        long start = EventBacktester.toNanos(period.start());
-        long end = EventBacktester.toNanos(period.end());
-        Recorder recorder = new Recorder(symbol, signals, start, end);
-        store.replay(symbol, EventBacktester.toNanos(period.warmUpStart()), end,
-                recorder::onEvent);
-        return analyse(symbol, recorder.finish());
+        return evaluate(store, symbol, List.of(period), () -> signals);
     }
 
-    /** Turns the written-down samples into the results. */
-    SignalEvaluationReport analyse(String symbol, SignalSamples samples) {
-        int signalCount = samples.signals().size();
+    /**
+     * Replays several days, each with new signals, and evaluates the signals.
+     *
+     * @param store where the events are read from
+     * @param symbol the symbol, for example {@code QQQ}
+     * @param periods one period per day, in the order the days should be reported
+     * @param newSignals creates new signals of this symbol by name for one day, in the order
+     *         they should be reported; the same names every time
+     * @return the results
+     * @throws IllegalArgumentException if there is no period, there are no signals or more than
+     *         {@link #MAX_SIGNALS}, or the days get different signals
+     */
+    public SignalEvaluationReport evaluate(MarketEventStore store, String symbol,
+            List<TradingPeriod> periods, Supplier<Map<String, Signal>> newSignals) {
+        if (periods.isEmpty()) {
+            throw new IllegalArgumentException("Need at least one period");
+        }
+        List<SignalSamples> samples = new ArrayList<>();
+        for (TradingPeriod period : periods) {
+            Map<String, Signal> signals = newSignals.get();
+            if (signals.isEmpty() || signals.size() > MAX_SIGNALS) {
+                throw new IllegalArgumentException(
+                        "Need 1 to " + MAX_SIGNALS + " signals: " + signals.size());
+            }
+            if (!samples.isEmpty()
+                    && !samples.get(0).signals().equals(List.copyOf(signals.keySet()))) {
+                throw new IllegalArgumentException("Every day needs the same signals: "
+                        + samples.get(0).signals() + " and " + signals.keySet());
+            }
+            long start = EventBacktester.toNanos(period.start());
+            long end = EventBacktester.toNanos(period.end());
+            Recorder recorder = new Recorder(symbol, signals, start, end);
+            store.replay(symbol, EventBacktester.toNanos(period.warmUpStart()), end,
+                    recorder::onEvent);
+            samples.add(recorder.finish());
+        }
+        List<LocalDate> days = periods.stream()
+                .map(period -> period.start().toLocalDate())
+                .toList();
+        return analyse(symbol, days, samples);
+    }
+
+    /**
+     * Turns the written-down samples into the results.
+     *
+     * @param symbol the symbol, for example {@code QQQ}
+     * @param days the days, in the order of {@code samples}
+     * @param samples the samples of every day, all with the same signals
+     * @return the results
+     */
+    SignalEvaluationReport analyse(String symbol, List<LocalDate> days,
+            List<SignalSamples> samples) {
+        List<String> names = samples.get(0).signals();
+        int total = samples.stream().mapToInt(SignalSamples::size).sum();
+        double[][] allConvictions = new double[names.size()][];
+        for (int signal = 0; signal < names.size(); signal++) {
+            int index = signal;
+            allConvictions[signal] = join(samples.stream()
+                    .map(day -> day.convictions()[index])
+                    .toList());
+        }
         List<List<Double>> correlations = new ArrayList<>();
-        for (int a = 0; a < signalCount; a++) {
+        for (double[] a : allConvictions) {
             List<Double> row = new ArrayList<>();
-            for (int b = 0; b < signalCount; b++) {
-                row.add(correlation(samples.convictions()[a], samples.convictions()[b],
-                        samples.size()));
+            for (double[] b : allConvictions) {
+                row.add(correlation(a, b, total));
             }
             correlations.add(row);
         }
+
         List<GroupResult> groups = new ArrayList<>();
-        for (List<Integer> members : groups(signalCount)) {
-            double[] mixed = mix(samples, members);
+        for (List<Integer> members : groups(names.size(), maxGroupSize)) {
+            List<double[]> mixed = samples.stream()
+                    .map(day -> mix(day, members))
+                    .toList();
             List<HorizonResult> results = new ArrayList<>();
             for (Duration horizon : horizons) {
                 results.add(evaluateHorizon(samples, mixed, horizon));
             }
-            groups.add(new GroupResult(
-                    members.stream().map(samples.signals()::get).toList(), results));
+            groups.add(new GroupResult(members.stream().map(names::get).toList(), results));
         }
-        double[] halfSpreads = Arrays.stream(samples.halfSpreads())
+
+        double[] halfSpreads = Arrays.stream(join(samples.stream()
+                        .map(SignalSamples::halfSpreads)
+                        .toList()))
                 .filter(value -> !Double.isNaN(value))
                 .toArray();
         double averageHalfSpreadCents = halfSpreads.length == 0
                 ? Double.NaN
                 : Arrays.stream(halfSpreads).average().orElseThrow() / UNITS_PER_CENT;
-        return new SignalEvaluationReport(symbol, halfSpreads.length, averageHalfSpreadCents,
-                samples.signals(), correlations, groups);
+        return new SignalEvaluationReport(symbol, days, halfSpreads.length,
+                averageHalfSpreadCents, names, correlations, groups);
     }
 
-    private HorizonResult evaluateHorizon(SignalSamples samples, double[] mixed,
+    private HorizonResult evaluateHorizon(List<SignalSamples> samples, List<double[]> mixed,
             Duration horizon) {
         int steps = (int) (horizon.toNanos() / sampleNanos);
-        double[] mids = samples.mids();
-        double[] opinions = new double[mids.length];
-        double[] moves = new double[mids.length];
+        int total = samples.stream().mapToInt(SignalSamples::size).sum();
+        double[] opinions = new double[total];
+        double[] moves = new double[total];
         int valid = 0;
         int active = 0;
         int moved = 0;
         int hits = 0;
         double directedSum = 0;
-        for (int i = 0; i + steps < mids.length; i++) {
-            if (Double.isNaN(mids[i]) || Double.isNaN(mids[i + steps])) {
-                continue;
-            }
-            double move = (mids[i + steps] - mids[i]) / UNITS_PER_CENT;
-            opinions[valid] = mixed[i];
-            moves[valid] = move;
-            valid++;
-            if (Math.abs(mixed[i]) <= convictionThreshold) {
-                continue;
-            }
-            double directed = Math.signum(mixed[i]) * move;
-            active++;
-            directedSum += directed;
-            if (move != 0) {
-                moved++;
-                if (directed > 0) {
-                    hits++;
+        List<Double> dailyMoves = new ArrayList<>();
+        for (int day = 0; day < samples.size(); day++) {
+            double[] mids = samples.get(day).mids();
+            double[] dayMixed = mixed.get(day);
+            int dayActive = 0;
+            double dayDirectedSum = 0;
+            // i + steps stays inside the day: a move never reaches into the next day
+            for (int i = 0; i + steps < mids.length; i++) {
+                if (Double.isNaN(mids[i]) || Double.isNaN(mids[i + steps])) {
+                    continue;
+                }
+                double move = (mids[i + steps] - mids[i]) / UNITS_PER_CENT;
+                opinions[valid] = dayMixed[i];
+                moves[valid] = move;
+                valid++;
+                if (Math.abs(dayMixed[i]) <= convictionThreshold) {
+                    continue;
+                }
+                double directed = Math.signum(dayMixed[i]) * move;
+                dayActive++;
+                dayDirectedSum += directed;
+                if (move != 0) {
+                    moved++;
+                    if (directed > 0) {
+                        hits++;
+                    }
                 }
             }
+            active += dayActive;
+            directedSum += dayDirectedSum;
+            dailyMoves.add(dayActive == 0 ? Double.NaN : dayDirectedSum / dayActive);
         }
         return new HorizonResult(horizon, active,
                 moved == 0 ? Double.NaN : (double) hits / moved,
                 active == 0 ? Double.NaN : directedSum / active,
-                correlation(opinions, moves, valid));
+                correlation(opinions, moves, valid),
+                dailyMoves);
     }
 
-    /** Returns the equal-weight average opinion of the members at every sample. */
+    /** Returns the equal-weight average opinion of the members at every sample of one day. */
     private static double[] mix(SignalSamples samples, List<Integer> members) {
         double[] mixed = new double[samples.size()];
         for (int member : members) {
@@ -183,16 +259,28 @@ public class SignalEvaluator {
         return mixed;
     }
 
+    /** Puts arrays one after the other. */
+    private static double[] join(List<double[]> parts) {
+        double[] joined = new double[parts.stream().mapToInt(part -> part.length).sum()];
+        int position = 0;
+        for (double[] part : parts) {
+            System.arraycopy(part, 0, joined, position, part.length);
+            position += part.length;
+        }
+        return joined;
+    }
+
     /**
-     * Returns every non-empty group of signals: first every signal alone, then every pair, and
-     * so on.
+     * Returns the groups of signals up to a size: first every signal alone, then every pair,
+     * and so on.
      *
      * @param signalCount the number of signals
+     * @param maxSize the largest group; larger than the number of signals means all of them
      * @return the groups, each as the positions of its signals in increasing order
      */
-    static List<List<Integer>> groups(int signalCount) {
+    static List<List<Integer>> groups(int signalCount, int maxSize) {
         List<List<Integer>> groups = new ArrayList<>();
-        for (int size = 1; size <= signalCount; size++) {
+        for (int size = 1; size <= Math.min(signalCount, maxSize); size++) {
             for (int mask = 1; mask < 1 << signalCount; mask++) {
                 if (Integer.bitCount(mask) != size) {
                     continue;
@@ -241,7 +329,7 @@ public class SignalEvaluator {
         return covariance / Math.sqrt(varianceX * varianceY);
     }
 
-    /** Replays the events and writes down the samples. */
+    /** Replays the events of one day and writes down the samples. */
     private final class Recorder {
 
         private final List<String> names;

@@ -7,13 +7,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import org.example.backtest.EventBacktester;
 import org.example.backtest.TradingPeriod;
-import org.example.marketdata.MarketEvent;
 import org.example.marketdata.MarketEventStore;
-import org.example.marketdata.book.OrderBook;
 import org.example.marketdata.book.PriceLevel;
-import org.example.marketdata.state.SymbolState;
 import org.example.research.SignalEvaluationReport.GroupResult;
 import org.example.research.SignalEvaluationReport.HorizonResult;
 import org.example.signal.Signal;
@@ -33,12 +29,10 @@ public class SignalEvaluator {
     /** At most this many signals, because their groups grow fast: 8 signals give 255 groups. */
     public static final int MAX_SIGNALS = 8;
 
-    /** Trade window of the shared market state; the signals keep their own windows. */
-    private static final Duration STATE_TRADE_WINDOW = Duration.ofSeconds(10);
-
     /** Price units (1/10000 dollars) in one cent. */
     private static final double UNITS_PER_CENT = PriceLevel.UNITS_PER_DOLLAR / 100;
 
+    private final SignalSampler sampler;
     private final long sampleNanos;
     private final List<Duration> horizons;
     private final double convictionThreshold;
@@ -59,10 +53,7 @@ public class SignalEvaluator {
      */
     public SignalEvaluator(Duration sampleInterval, List<Duration> horizons,
             double convictionThreshold, int maxGroupSize) {
-        if (sampleInterval.isNegative() || sampleInterval.isZero()) {
-            throw new IllegalArgumentException(
-                    "Sample interval must be positive: " + sampleInterval);
-        }
+        this.sampler = new SignalSampler(sampleInterval, MAX_SIGNALS);
         if (horizons.isEmpty()) {
             throw new IllegalArgumentException("Need at least one horizon");
         }
@@ -117,28 +108,7 @@ public class SignalEvaluator {
      */
     public SignalEvaluationReport evaluate(MarketEventStore store, String symbol,
             List<TradingPeriod> periods, Supplier<Map<String, Signal>> newSignals) {
-        if (periods.isEmpty()) {
-            throw new IllegalArgumentException("Need at least one period");
-        }
-        List<SignalSamples> samples = new ArrayList<>();
-        for (TradingPeriod period : periods) {
-            Map<String, Signal> signals = newSignals.get();
-            if (signals.isEmpty() || signals.size() > MAX_SIGNALS) {
-                throw new IllegalArgumentException(
-                        "Need 1 to " + MAX_SIGNALS + " signals: " + signals.size());
-            }
-            if (!samples.isEmpty()
-                    && !samples.get(0).signals().equals(List.copyOf(signals.keySet()))) {
-                throw new IllegalArgumentException("Every day needs the same signals: "
-                        + samples.get(0).signals() + " and " + signals.keySet());
-            }
-            long start = EventBacktester.toNanos(period.start());
-            long end = EventBacktester.toNanos(period.end());
-            Recorder recorder = new Recorder(symbol, signals, start, end);
-            store.replay(symbol, EventBacktester.toNanos(period.warmUpStart()), end,
-                    recorder::onEvent);
-            samples.add(recorder.finish());
-        }
+        List<SignalSamples> samples = sampler.sample(store, symbol, periods, newSignals);
         List<LocalDate> days = periods.stream()
                 .map(period -> period.start().toLocalDate())
                 .toList();
@@ -327,63 +297,5 @@ public class SignalEvaluator {
             return Double.NaN;
         }
         return covariance / Math.sqrt(varianceX * varianceY);
-    }
-
-    /** Replays the events of one day and writes down the samples. */
-    private final class Recorder {
-
-        private final List<String> names;
-        private final List<Signal> signals;
-        private final SymbolState state;
-        private final long start;
-        private final double[] mids;
-        private final double[] halfSpreads;
-        private final double[][] convictions;
-        private int next;
-
-        Recorder(String symbol, Map<String, Signal> signals, long start, long end) {
-            this.names = List.copyOf(signals.keySet());
-            this.signals = List.copyOf(signals.values());
-            this.state = new SymbolState(symbol, STATE_TRADE_WINDOW);
-            this.start = start;
-            int count = (int) ((end - start + sampleNanos - 1) / sampleNanos);
-            this.mids = new double[count];
-            this.halfSpreads = new double[count];
-            this.convictions = new double[signals.size()][count];
-        }
-
-        void onEvent(MarketEvent event) {
-            // the state before this event is the state at the sample times
-            while (next < mids.length && event.timestamp() >= start + next * sampleNanos) {
-                record(next++);
-            }
-            state.apply(event);
-            for (Signal signal : signals) {
-                signal.update(event, state);
-            }
-        }
-
-        SignalSamples finish() {
-            while (next < mids.length) {
-                record(next++);
-            }
-            return new SignalSamples(names, sampleNanos, mids, halfSpreads, convictions);
-        }
-
-        private void record(int sample) {
-            OrderBook book = state.book();
-            if (book.bestBid().isPresent() && book.bestAsk().isPresent()) {
-                long bid = book.bestBid().get().price();
-                long ask = book.bestAsk().get().price();
-                mids[sample] = (bid + ask) / 2.0;
-                halfSpreads[sample] = (ask - bid) / 2.0;
-            } else {
-                mids[sample] = Double.NaN;
-                halfSpreads[sample] = Double.NaN;
-            }
-            for (int signal = 0; signal < signals.size(); signal++) {
-                convictions[signal][sample] = signals.get(signal).conviction();
-            }
-        }
     }
 }

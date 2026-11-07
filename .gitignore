@@ -48,3 +48,6 @@ build/
 ### IntelliJ szemelyes beallitasok ###
 .idea/workspace.xml
 CLAUDE.md
+
+### Personal notes and plans (local only) ###
+docs/

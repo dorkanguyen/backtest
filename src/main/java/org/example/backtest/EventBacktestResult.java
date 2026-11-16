@@ -15,6 +15,8 @@ import org.example.execution.Fill;
  * @param maxDrawdown the largest fall of the equity from an earlier peak
  * @param fills every fill, in time order
  * @param equityCurve the equity sampled at a fixed interval, and at the end
+ * @param markouts how the price moved after the fills of the algorithm, by horizon and
+ *         liquidity; see {@link Markout}
  */
 public record EventBacktestResult(
         String symbol,
@@ -24,6 +26,7 @@ public record EventBacktestResult(
         BigDecimal totalCommission,
         BigDecimal maxDrawdown,
         List<Fill> fills,
-        List<EquityPoint> equityCurve) {
+        List<EquityPoint> equityCurve,
+        List<Markout> markouts) {
 
 }

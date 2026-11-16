@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import org.example.execution.ExecutionAlgo;
 import org.example.execution.Fill;
+import org.example.execution.Liquidity;
 import org.example.execution.PerShareCommission;
 import org.example.execution.ThrottledExecutionDefinition;
 import org.example.marketdata.BookSide;
@@ -123,6 +124,20 @@ class EventBacktesterTest {
         // from 09:46: 8997 + 100 x mid 10.09 = 10006 is the peak; selling at the bid 10.08 and
         // paying 1 dollar commission ends at 10004, which is 2.00 below the peak
         assertThat(result.maxDrawdown()).isEqualByComparingTo("2.00");
+    }
+
+    @Test
+    void takerBuyStartsHalfSpreadBehind() {
+        // bought at the ask 10.02; one and ten seconds later the mid is 10.015: -0.5 cent
+        assertThat(result.markouts()).hasSize(4);
+        for (Markout markout : result.markouts()) {
+            if (markout.liquidity() == Liquidity.TAKER) {
+                assertThat(markout.fills()).isEqualTo(1);
+                assertThat(markout.averageCents()).isCloseTo(-0.5, within(1e-9));
+            } else {
+                assertThat(markout.fills()).isZero();
+            }
+        }
     }
 
     @Test

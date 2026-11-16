@@ -1,6 +1,7 @@
 package org.example.backtest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -83,6 +84,19 @@ class EventBacktesterLimitOrderTest {
         assertThat(fills.get(1).commission()).isEqualByComparingTo("0");
         assertThat(fills.get(2).commission()).isEqualByComparingTo("1.00");
         assertThat(result.pnl()).isEqualByComparingTo("-2.00");
+    }
+
+    @Test
+    void makerFillsHaveMarkoutAndClosingOrderIsLeftOut() {
+        // both maker buys at 10.00; a second later the book is 10.00 / 10.02, mid 10.01: +1 cent
+        Markout oneSecond = result.markouts().get(0);
+        assertThat(oneSecond.horizonMillis()).isEqualTo(1000);
+        assertThat(oneSecond.liquidity()).isEqualTo(Liquidity.MAKER);
+        assertThat(oneSecond.fills()).isEqualTo(2);
+        assertThat(oneSecond.shares()).isEqualTo(100);
+        assertThat(oneSecond.averageCents()).isCloseTo(1.0, within(1e-9));
+        // the closing sell is a taker fill, but it is not the algorithm's: not counted
+        assertThat(result.markouts().get(1).fills()).isZero();
     }
 
     @Test

@@ -53,6 +53,10 @@ public class EventBacktester {
      */
     static final long CLOSING_ORDER_ID = 0;
 
+    /** How long after each fill its markout is measured. */
+    public static final List<Duration> MARKOUT_HORIZONS =
+            List.of(Duration.ofSeconds(1), Duration.ofSeconds(10));
+
     /** Progress is reported at most once per this much replayed market time. */
     private static final long PROGRESS_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
 
@@ -169,6 +173,7 @@ public class EventBacktester {
         private final ExecutionSimulator execution;
         private final List<Fill> fills = new ArrayList<>();
         private final List<EquityPoint> equityCurve = new ArrayList<>();
+        private final MarkoutTracker markouts = new MarkoutTracker(MARKOUT_HORIZONS);
         private long nextSample;
         /** Timestamp of the events applied since the last decision, or -1 if there are none. */
         private long undecided = -1;
@@ -191,14 +196,15 @@ public class EventBacktester {
             if (undecided >= 0 && event.timestamp() > undecided) {
                 decide();
             }
-            // the book before this event is the book at the sample times
+            // the book before this event is the book at the sample times and markout horizons
+            markouts.evaluateUntil(event.timestamp(), state.book());
             while (event.timestamp() >= nextSample) {
                 sample(nextSample);
                 nextSample += sampleNanos;
             }
             LocalDateTime time = toTime(event.timestamp());
             state.apply(event);
-            report(execution.onEvent(event, time));
+            report(execution.onEvent(event, time), event.timestamp());
             strategy.update(event, state);
             if (event.timestamp() >= start) {
                 undecided = event.timestamp();
@@ -214,7 +220,7 @@ public class EventBacktester {
                     strategy.targetPosition(position), state.book());
             LocalDateTime time = toTime(timestamp);
             for (Instruction instruction : instructions) {
-                report(execution.carryOut(instruction, state.book(), time));
+                report(execution.carryOut(instruction, state.book(), time), timestamp);
             }
         }
 
@@ -222,6 +228,8 @@ public class EventBacktester {
             if (undecided >= 0) {
                 decide();
             }
+            // horizons ending after the period are not measured
+            markouts.evaluateUntil(end, state.book());
             while (end > nextSample) {
                 sample(nextSample);
                 nextSample += sampleNanos;
@@ -246,14 +254,15 @@ public class EventBacktester {
             }
             return new EventBacktestResult(symbol, startingCash, finalEquity,
                     finalEquity.subtract(startingCash), totalCommission, maxDrawdown(),
-                    List.copyOf(fills), List.copyOf(equityCurve));
+                    List.copyOf(fills), List.copyOf(equityCurve), markouts.summary());
         }
 
-        /** Books the fills and tells the algorithm about them. */
-        private void report(List<Fill> newFills) {
+        /** Books the fills, tells the algorithm about them and follows their markouts. */
+        private void report(List<Fill> newFills, long timestamp) {
             for (Fill fill : newFills) {
                 book(fill);
                 algo.onFill(fill);
+                markouts.add(fill, timestamp);
             }
         }
 

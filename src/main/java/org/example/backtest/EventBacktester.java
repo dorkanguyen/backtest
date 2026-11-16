@@ -29,8 +29,11 @@ import org.example.strategy.EventStrategy;
  * live.
  *
  * <p>For every event: the market state is updated, waiting limit orders move forward in their
- * queues and may be filled, the strategy is updated and says its target position, and the
- * execution algorithm decides what to do; its instructions are carried out by an
+ * queues and may be filled, and the strategy is updated. Events with the same timestamp happened
+ * at the same moment (for example one order that takes several price levels), so the decision
+ * waits until all of them are applied: only then does the strategy say its target position and
+ * the execution algorithm decide what to do. Deciding in the middle of such a group would react
+ * to a market that never existed. The instructions are carried out by an
  * {@link ExecutionSimulator}. Every fill is reported back to the algorithm. Before trading
  * starts, events only warm up the book and the signals. At the end the waiting orders are
  * cancelled and the position is closed with a market order. The equity is sampled at a fixed
@@ -167,6 +170,8 @@ public class EventBacktester {
         private final List<Fill> fills = new ArrayList<>();
         private final List<EquityPoint> equityCurve = new ArrayList<>();
         private long nextSample;
+        /** Timestamp of the events applied since the last decision, or -1 if there are none. */
+        private long undecided = -1;
 
         Run(String symbol, long start, EventStrategy strategy, ExecutionAlgo algo,
                 BigDecimal startingCash) {
@@ -182,6 +187,10 @@ public class EventBacktester {
         }
 
         void onEvent(MarketEvent event) {
+            // a later timestamp: the previous moment is complete, so decide on it first
+            if (undecided >= 0 && event.timestamp() > undecided) {
+                decide();
+            }
             // the book before this event is the book at the sample times
             while (event.timestamp() >= nextSample) {
                 sample(nextSample);
@@ -191,18 +200,28 @@ public class EventBacktester {
             state.apply(event);
             report(execution.onEvent(event, time));
             strategy.update(event, state);
-            if (event.timestamp() < start) {
-                return;
+            if (event.timestamp() >= start) {
+                undecided = event.timestamp();
             }
+        }
+
+        /** Lets the strategy and the algorithm act on the moment whose events were applied. */
+        private void decide() {
+            long timestamp = undecided;
+            undecided = -1;
             int position = portfolio.getPosition();
-            List<Instruction> instructions = algo.decide(event.timestamp(), symbol, position,
+            List<Instruction> instructions = algo.decide(timestamp, symbol, position,
                     strategy.targetPosition(position), state.book());
+            LocalDateTime time = toTime(timestamp);
             for (Instruction instruction : instructions) {
                 report(execution.carryOut(instruction, state.book(), time));
             }
         }
 
         EventBacktestResult finish(long end) {
+            if (undecided >= 0) {
+                decide();
+            }
             while (end > nextSample) {
                 sample(nextSample);
                 nextSample += sampleNanos;

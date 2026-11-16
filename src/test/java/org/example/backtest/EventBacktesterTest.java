@@ -71,6 +71,32 @@ class EventBacktesterTest {
     }
 
     @Test
+    void decidesOnlyAfterEveryEventOfTheSameMoment() {
+        // 09:31 has two events at the same nanosecond: a new bid, then the 10.02 ask is taken.
+        // Deciding after the first one would buy at 10.02, from a book that never existed.
+        // These are also the last events, so the decision is made when the replay ends.
+        List<MarketEvent> sameMoment = List.of(
+                event(9, 0, EventType.ADD, 1, BookSide.BID, 100000, 1000),
+                event(9, 0, EventType.ADD, 2, BookSide.ASK, 100200, 100),
+                event(9, 0, EventType.ADD, 3, BookSide.ASK, 100300, 1000),
+                event(9, 31, EventType.ADD, 4, BookSide.BID, 100100, 10),
+                event(9, 31, EventType.DELETE, 2, BookSide.ASK, 100200, 100));
+
+        EventBacktestResult sameMomentResult = new EventBacktester(
+                new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00")),
+                Duration.ofMinutes(1))
+                .run(new ListMarketEventStore(sameMoment), "AAPL",
+                        new TradingPeriod(DAY.withHour(9), DAY.withHour(9).withMinute(30),
+                                DAY.withHour(10)),
+                        new FixedTargetStrategy(100), noThrottling(), new BigDecimal("10000"));
+
+        Fill buy = sameMomentResult.fills().get(0);
+        assertThat(buy.side()).isEqualTo(Side.BUY);
+        assertThat(buy.price()).isEqualByComparingTo("10.03");
+        assertThat(buy.time()).isEqualTo(DAY.withHour(9).withMinute(31));
+    }
+
+    @Test
     void buysWhenTradingStartsAndSellsAtTheEnd() {
         List<Fill> fills = result.fills();
 

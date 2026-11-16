@@ -54,7 +54,7 @@ final class SignalSampler {
      *         every time
      * @return the samples of every day, in the order of the periods
      * @throws IllegalArgumentException if there is no period, there are no signals or too many,
-     *         or the days get different signals
+     *         the days get different signals, or a day has no event at all
      */
     List<SignalSamples> sample(MarketEventStore store, String symbol,
             List<TradingPeriod> periods, Supplier<Map<String, Signal>> newSignals) {
@@ -78,6 +78,10 @@ final class SignalSampler {
             Recorder recorder = new Recorder(symbol, signals, start, end);
             store.replay(symbol, EventBacktester.toNanos(period.warmUpStart()), end,
                     recorder::onEvent);
+            if (recorder.events == 0) {
+                throw new IllegalArgumentException(
+                        EventBacktester.noEventsMessage(symbol, period));
+            }
             samples.add(recorder.finish());
         }
         return samples;
@@ -94,6 +98,7 @@ final class SignalSampler {
         private final double[] halfSpreads;
         private final double[][] convictions;
         private int next;
+        private long events;
 
         Recorder(String symbol, Map<String, Signal> signals, long start, long end) {
             this.names = List.copyOf(signals.keySet());
@@ -111,6 +116,7 @@ final class SignalSampler {
             while (next < mids.length && event.timestamp() >= start + next * sampleNanos) {
                 record(next++);
             }
+            events++;
             state.apply(event);
             for (Signal signal : signals) {
                 signal.update(event, state);

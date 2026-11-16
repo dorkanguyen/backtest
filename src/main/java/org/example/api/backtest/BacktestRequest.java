@@ -20,7 +20,7 @@ import java.util.Map;
  * @param signals the signals to mix, with their weights and settings
  * @param filters the trading filters with their settings
  * @param execution the execution algorithm with its settings
- * @param commission the commission of every fill
+ * @param commission the commission of every order
  */
 public record BacktestRequest(
         String symbol,
@@ -70,14 +70,14 @@ public record BacktestRequest(
     }
 
     /**
-     * The commission of every fill: a broker fee per share with a minimum, plus exchange and
+     * The commission of every order: a broker fee per share with a minimum, plus exchange and
      * clearing fees per share. The exchange fee is paid by takers; makers get a rebate instead.
      *
      * <p>Missing exchange fee, clearing fee and rebate count as zero, so
      * {@code perShare 0.005, minimum 1.00} alone is a fixed per-share price.
      *
      * @param perShare broker fee in dollars per share, for example 0.0035
-     * @param minimum the least broker fee of one fill, for example 0.35
+     * @param minimum the least broker fee of one order, for example 0.35
      * @param exchangePerShare exchange fee per share paid by takers, for example 0.003
      * @param clearingPerShare clearing fee per share, for example 0.0002
      * @param makerRebatePerShare exchange rebate per share paid to makers, for example 0.002

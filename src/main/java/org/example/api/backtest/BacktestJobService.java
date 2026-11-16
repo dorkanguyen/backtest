@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -120,8 +121,9 @@ public class BacktestJobService {
     }
 
     private Prepared prepare(BacktestRequest request) {
-        String symbol = required(request.symbol(), "symbol");
-        if (symbol.isBlank()) {
+        // stored symbols are upper case, so "aapl" means AAPL
+        String symbol = required(request.symbol(), "symbol").strip().toUpperCase(Locale.ROOT);
+        if (symbol.isEmpty()) {
             throw new IllegalArgumentException("symbol must not be blank");
         }
         final TradingPeriod period = new TradingPeriod(

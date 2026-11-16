@@ -1,25 +1,14 @@
 package org.example.api.catalog;
 
-import java.util.List;
 import org.example.catalog.Catalog;
-import org.example.execution.JoinBestQuoteDefinition;
-import org.example.execution.ThrottledExecutionDefinition;
-import org.example.filter.SpreadFilterDefinition;
-import org.example.filter.TradeCountFilterDefinition;
-import org.example.signal.DecayingLevelSignalDefinition;
-import org.example.signal.ImpactPriceSignalDefinition;
-import org.example.signal.MomentumSignalDefinition;
-import org.example.signal.OfiSignalDefinition;
-import org.example.signal.TradeImbalanceSignalDefinition;
-import org.example.signal.VwapSignalDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * The one place where the available signals, filters and execution algorithms are listed.
+ * Gives the web application the standard catalog of signals, filters and execution algorithms.
  *
- * <p>A new kind of signal needs one new line here. The signals themselves know nothing about
- * Spring, so they also work outside the web application.
+ * <p>The list itself is in {@link Catalog#standard()}, which does not need Spring, so the
+ * research tools can use the same list.
  */
 @Configuration
 public class CatalogConfig {
@@ -31,19 +20,6 @@ public class CatalogConfig {
      */
     @Bean
     public Catalog catalog() {
-        return new Catalog(
-                List.of(
-                        new ImpactPriceSignalDefinition(),
-                        new DecayingLevelSignalDefinition(),
-                        new VwapSignalDefinition(),
-                        new OfiSignalDefinition(),
-                        new TradeImbalanceSignalDefinition(),
-                        new MomentumSignalDefinition()),
-                List.of(
-                        new TradeCountFilterDefinition(),
-                        new SpreadFilterDefinition()),
-                List.of(
-                        new ThrottledExecutionDefinition(),
-                        new JoinBestQuoteDefinition()));
+        return Catalog.standard();
     }
 }

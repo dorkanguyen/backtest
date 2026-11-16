@@ -100,24 +100,46 @@ public class EventBacktester {
      * @param progress receives the finished part of the period, from 0 to 1, about once per
      *         replayed minute and 1 at the end
      * @return the outcome
+     * @throws IllegalArgumentException if there is no event at all from the warm-up start to the
+     *         end, for example because of a wrong symbol, a day without data or the wrong
+     *         database
      */
     public EventBacktestResult run(MarketEventStore store, String symbol, TradingPeriod period,
             EventStrategy strategy, ExecutionAlgo algo, BigDecimal startingCash,
             DoubleConsumer progress) {
         long from = toNanos(period.warmUpStart());
         long to = toNanos(period.end());
-        Run run = new Run(symbol, toNanos(period.start()), strategy, algo, startingCash);
+        long start = toNanos(period.start());
+        Run run = new Run(symbol, start, strategy, algo, startingCash);
         long[] nextReport = {from};
+        long[] events = {0};
         store.replay(symbol, from, to, event -> {
             if (event.timestamp() >= nextReport[0]) {
                 progress.accept((double) (event.timestamp() - from) / (to - from));
                 nextReport[0] = event.timestamp() + PROGRESS_INTERVAL_NANOS;
             }
+            events[0]++;
             run.onEvent(event);
         });
+        if (events[0] == 0) {
+            throw new IllegalArgumentException(noEventsMessage(symbol, period));
+        }
         EventBacktestResult result = run.finish(to);
         progress.accept(1);
         return result;
+    }
+
+    /**
+     * Explains that a period has no market data, and what usually causes it.
+     *
+     * @param symbol the symbol that was asked for
+     * @param period the period that was asked for
+     * @return the message of the error
+     */
+    public static String noEventsMessage(String symbol, TradingPeriod period) {
+        return "No market events for " + symbol + " between " + period.warmUpStart() + " and "
+                + period.end() + " (New York time). Check the symbol, that this day was"
+                + " imported (no weekends or holidays) and the database path.";
     }
 
     /** Converts a New York time to nanoseconds since 1970 UTC. */

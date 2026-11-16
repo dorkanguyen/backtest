@@ -25,7 +25,7 @@ public class BacktestJobConfig {
     @Bean
     public MarketEventStoreFactory marketEventStoreFactory(
             @Value("${marketdata.db-path}") String databaseFile) {
-        return () -> new SqliteMarketEventStore(databaseFile);
+        return () -> SqliteMarketEventStore.openExisting(databaseFile);
     }
 
     /**

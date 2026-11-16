@@ -8,8 +8,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import org.example.api.catalog.CatalogConfig;
 import org.example.backtest.TradingPeriod;
 import org.example.catalog.Catalog;
 import org.example.marketdata.MarketEventStore;
@@ -63,7 +63,7 @@ public final class SignalReport {
                     + " separated> [start HH:mm] [end HH:mm] [" + MAX_GROUP_OPTION + " N]");
             System.exit(1);
         }
-        String symbol = positional.get(1);
+        String symbol = positional.get(1).toUpperCase(Locale.ROOT);
         LocalTime start = positional.size() == 5 ? LocalTime.parse(positional.get(3))
                 : DEFAULT_START;
         LocalTime end = positional.size() == 5 ? LocalTime.parse(positional.get(4))
@@ -73,12 +73,12 @@ public final class SignalReport {
                 .map(day -> new TradingPeriod(day.atTime(WARM_UP_START), day.atTime(start),
                         day.atTime(end)))
                 .toList();
-        Catalog catalog = new CatalogConfig().catalog();
+        Catalog catalog = Catalog.standard();
 
         System.out.printf("Evaluating %s on %d day(s)...%n", symbol, periods.size());
         final long started = System.nanoTime();
         SignalEvaluationReport report;
-        try (MarketEventStore store = new SqliteMarketEventStore(positional.get(0))) {
+        try (MarketEventStore store = SqliteMarketEventStore.openExisting(positional.get(0))) {
             report = new SignalEvaluator(SAMPLE_INTERVAL, HORIZONS, CONVICTION_THRESHOLD,
                     maxGroup).evaluate(store, symbol, periods, () -> newSignals(catalog, symbol));
         }

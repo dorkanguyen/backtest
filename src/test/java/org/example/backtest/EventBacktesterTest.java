@@ -1,6 +1,7 @@
 package org.example.backtest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.math.BigDecimal;
@@ -53,6 +54,21 @@ class EventBacktesterTest {
                     new TradingPeriod(DAY.withHour(9), DAY.withHour(9).withMinute(30),
                             DAY.withHour(10)),
                     new FixedTargetStrategy(100), noThrottling(), new BigDecimal("10000"));
+
+    @Test
+    void periodWithoutEventsIsAnError() {
+        EventBacktester backtester = new EventBacktester(
+                new PerShareCommission(new BigDecimal("0.005"), new BigDecimal("1.00")),
+                Duration.ofMinutes(1));
+        // the next day has no data, for example a weekend or a day that was not imported
+        TradingPeriod nextDay = new TradingPeriod(DAY.plusDays(1).withHour(9),
+                DAY.plusDays(1).withHour(9).withMinute(30), DAY.plusDays(1).withHour(10));
+
+        assertThatThrownBy(() -> backtester.run(new ListMarketEventStore(events), "AAPL", nextDay,
+                new FixedTargetStrategy(100), noThrottling(), new BigDecimal("10000")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("No market events for AAPL");
+    }
 
     @Test
     void buysWhenTradingStartsAndSellsAtTheEnd() {

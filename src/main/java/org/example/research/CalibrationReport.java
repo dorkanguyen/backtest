@@ -5,9 +5,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import org.example.api.catalog.CatalogConfig;
 import org.example.backtest.TradingPeriod;
+import org.example.catalog.Catalog;
 import org.example.marketdata.MarketEventStore;
 import org.example.marketdata.SqliteMarketEventStore;
 import org.example.research.CalibrationTable.Band;
@@ -47,9 +48,9 @@ public final class CalibrationReport {
                     + " <training dates, comma separated> <test dates, comma separated>");
             System.exit(1);
         }
-        String symbol = args[1];
+        String symbol = args[1].toUpperCase(Locale.ROOT);
         String signalId = args[2];
-        SignalDefinition definition = new CatalogConfig().catalog().signal(signalId);
+        SignalDefinition definition = Catalog.standard().signal(signalId);
         List<TradingPeriod> training = periods(args[3]);
         List<TradingPeriod> test = periods(args[4]);
 
@@ -59,7 +60,7 @@ public final class CalibrationReport {
         SignalCalibrator calibrator = new SignalCalibrator(HORIZONS, BAND_EDGES);
         CalibrationTable trainingTable;
         CalibrationTable testTable;
-        try (MarketEventStore store = new SqliteMarketEventStore(args[0])) {
+        try (MarketEventStore store = SqliteMarketEventStore.openExisting(args[0])) {
             trainingTable = calibrator.calibrate(sampler.sample(store, symbol, training,
                     () -> Map.of(signalId, definition.create(symbol, Map.of()))), signalId);
             testTable = calibrator.calibrate(sampler.sample(store, symbol, test,

@@ -11,8 +11,8 @@ import java.util.Map;
 import org.example.api.backtest.BacktestRequest.CommissionSettings;
 import org.example.api.backtest.BacktestRequest.ComponentChoice;
 import org.example.api.backtest.BacktestRequest.SignalChoice;
-import org.example.api.catalog.CatalogConfig;
 import org.example.backtest.EventBacktester;
+import org.example.catalog.Catalog;
 import org.example.marketdata.BookSide;
 import org.example.marketdata.EventType;
 import org.example.marketdata.ListMarketEventStore;
@@ -34,7 +34,7 @@ class BacktestJobServiceTest {
             event(9, 31, 3, BookSide.BID, 100100));
 
     private final BacktestJobService service = new BacktestJobService(
-            new CatalogConfig().catalog(), () -> new ListMarketEventStore(events), Runnable::run);
+            Catalog.standard(), () -> new ListMarketEventStore(events), Runnable::run);
 
     @Test
     void validRequestRunsToTheEnd() {
@@ -44,6 +44,31 @@ class BacktestJobServiceTest {
         assertThat(job.getProgress()).isEqualTo(1.0);
         assertThat(job.getResult().symbol()).isEqualTo("AAPL");
         assertThat(job.getError()).isNull();
+    }
+
+    @Test
+    void lowerCaseSymbolMeansUpperCase() {
+        BacktestJob job = service.submit(request(" aapl ", DAY, "vwap", 100));
+
+        assertThat(job.getStatus()).isEqualTo(BacktestJob.Status.DONE);
+        assertThat(job.getResult().symbol()).isEqualTo("AAPL");
+    }
+
+    @Test
+    void dayWithoutDataFailsInsteadOfReportingZero() {
+        // 2025-12-13 is a Saturday: there is no data
+        BacktestJob job = service.submit(request("AAPL", DAY.plusDays(4), "vwap", 100));
+
+        assertThat(job.getStatus()).isEqualTo(BacktestJob.Status.FAILED);
+        assertThat(job.getError()).contains("No market events for AAPL");
+    }
+
+    @Test
+    void unknownSymbolFailsInsteadOfReportingZero() {
+        BacktestJob job = service.submit(request("MSFT", DAY, "vwap", 100));
+
+        assertThat(job.getStatus()).isEqualTo(BacktestJob.Status.FAILED);
+        assertThat(job.getError()).contains("No market events for MSFT");
     }
 
     @Test
@@ -99,7 +124,7 @@ class BacktestJobServiceTest {
             throw new IllegalStateException("Database not found");
         };
         BacktestJobService brokenService =
-                new BacktestJobService(new CatalogConfig().catalog(), broken, Runnable::run);
+                new BacktestJobService(Catalog.standard(), broken, Runnable::run);
 
         BacktestJob job = brokenService.submit(request("vwap", 100));
 
@@ -118,7 +143,12 @@ class BacktestJobServiceTest {
     }
 
     private static BacktestRequest request(String signal, Integer maxPosition) {
-        return new BacktestRequest("AAPL", DAY, LocalTime.of(9, 30), LocalTime.of(10, 0),
+        return request("AAPL", DAY, signal, maxPosition);
+    }
+
+    private static BacktestRequest request(String symbol, LocalDate date, String signal,
+            Integer maxPosition) {
+        return new BacktestRequest(symbol, date, LocalTime.of(9, 30), LocalTime.of(10, 0),
                 new BigDecimal("10000"), maxPosition,
                 List.of(new SignalChoice(signal, 1, Map.of())),
                 List.of(new ComponentChoice("spread", Map.of("maxSpreadCents", 5.0))),

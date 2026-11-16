@@ -46,7 +46,7 @@ public final class ItchImporter {
 
         long start = System.nanoTime();
         long[] count = {0};
-        try (MarketEventStore store = new SqliteMarketEventStore(databaseFile);
+        try (MarketEventStore store = SqliteMarketEventStore.openOrCreate(databaseFile);
                 ItchReader reader = new ItchReader(itchFile)) {
             store.deleteBetween(startOfDayNanos(tradingDate),
                     startOfDayNanos(tradingDate.plusDays(1)));

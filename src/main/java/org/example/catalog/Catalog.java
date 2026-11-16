@@ -4,9 +4,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.example.execution.ExecutionAlgoDefinition;
+import org.example.execution.JoinBestQuoteDefinition;
+import org.example.execution.ThrottledExecutionDefinition;
 import org.example.filter.FilterDefinition;
+import org.example.filter.SpreadFilterDefinition;
+import org.example.filter.TradeCountFilterDefinition;
 import org.example.parameter.Definition;
+import org.example.signal.DecayingLevelSignalDefinition;
+import org.example.signal.ImpactPriceSignalDefinition;
+import org.example.signal.MomentumSignalDefinition;
+import org.example.signal.OfiSignalDefinition;
 import org.example.signal.SignalDefinition;
+import org.example.signal.TradeImbalanceSignalDefinition;
+import org.example.signal.VwapSignalDefinition;
 
 /**
  * Everything a backtest can be built from: the available kinds of signals, filters and execution
@@ -35,6 +45,30 @@ public record Catalog(
         checkUniqueIds(signals);
         checkUniqueIds(filters);
         checkUniqueIds(executionAlgos);
+    }
+
+    /**
+     * The standard catalog: every signal, filter and execution algorithm of the project. This is
+     * the one place where they are listed, so a new kind of signal needs one new line here. It
+     * does not need Spring, so the research tools use it too.
+     *
+     * @return the catalog of everything a backtest can be built from
+     */
+    public static Catalog standard() {
+        return new Catalog(
+                List.of(
+                        new ImpactPriceSignalDefinition(),
+                        new DecayingLevelSignalDefinition(),
+                        new VwapSignalDefinition(),
+                        new OfiSignalDefinition(),
+                        new TradeImbalanceSignalDefinition(),
+                        new MomentumSignalDefinition()),
+                List.of(
+                        new TradeCountFilterDefinition(),
+                        new SpreadFilterDefinition()),
+                List.of(
+                        new ThrottledExecutionDefinition(),
+                        new JoinBestQuoteDefinition()));
     }
 
     /**

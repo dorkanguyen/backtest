@@ -1,5 +1,7 @@
 package org.example.marketdata;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -14,6 +16,10 @@ import java.util.function.Consumer;
  * <p>Events are written in batches inside transactions, because writing millions of rows one by
  * one would take hours. The table keeps the insertion order, so events with the same timestamp
  * can be read back in their original order.
+ *
+ * <p>There are two ways to open it: {@link #openOrCreate} for the importer, which fills a new or
+ * existing database, and {@link #openExisting} for everything that only reads, so that a wrong
+ * path gives an error instead of a new empty database.
  */
 public class SqliteMarketEventStore implements MarketEventStore {
 
@@ -38,40 +44,68 @@ public class SqliteMarketEventStore implements MarketEventStore {
     private int pending;
 
     /**
-     * Opens (or creates) the database file and makes sure the table exists.
+     * Opens the database file, or creates it if it does not exist yet, and makes sure the table
+     * exists. Meant for the importer.
      *
      * @param databaseFile path of the database file, for example
      *     {@code C:/Users/me/market-data/market-data.db}
+     * @return the open store; the caller must close it
      */
-    public SqliteMarketEventStore(String databaseFile) {
+    public static SqliteMarketEventStore openOrCreate(String databaseFile) {
+        return new SqliteMarketEventStore(databaseFile, true);
+    }
+
+    /**
+     * Opens a database file that already exists. Meant for backtests and research tools, which
+     * only read: a mistyped path must not silently create a new, empty database.
+     *
+     * @param databaseFile path of the database file
+     * @return the open store; the caller must close it
+     * @throws IllegalArgumentException if there is no such file
+     */
+    public static SqliteMarketEventStore openExisting(String databaseFile) {
+        if (!Files.isRegularFile(Path.of(databaseFile))) {
+            throw new IllegalArgumentException(
+                    "Market data database not found: " + databaseFile);
+        }
+        return new SqliteMarketEventStore(databaseFile, false);
+    }
+
+    private SqliteMarketEventStore(String databaseFile, boolean createTable) {
         try {
             connection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile);
             try (Statement statement = connection.createStatement()) {
                 statement.execute("PRAGMA journal_mode = WAL");
                 statement.execute("PRAGMA synchronous = NORMAL");
-                statement.execute(
-                        """
-                        CREATE TABLE IF NOT EXISTS market_events (
-                            ts       INTEGER NOT NULL,
-                            symbol   TEXT    NOT NULL,
-                            type     TEXT    NOT NULL,
-                            order_id INTEGER NOT NULL,
-                            side     TEXT    NOT NULL,
-                            price    INTEGER NOT NULL,
-                            quantity INTEGER NOT NULL
-                        )
-                        """);
-                statement.execute(
-                        """
-                        CREATE INDEX IF NOT EXISTS market_events_symbol_ts
-                        ON market_events (symbol, ts)
-                        """);
+                if (createTable) {
+                    createTable(statement);
+                }
             }
             connection.setAutoCommit(false);
             insert = connection.prepareStatement(INSERT_SQL);
         } catch (SQLException e) {
             throw new IllegalStateException("Cannot open database " + databaseFile, e);
         }
+    }
+
+    private static void createTable(Statement statement) throws SQLException {
+        statement.execute(
+                """
+                CREATE TABLE IF NOT EXISTS market_events (
+                    ts       INTEGER NOT NULL,
+                    symbol   TEXT    NOT NULL,
+                    type     TEXT    NOT NULL,
+                    order_id INTEGER NOT NULL,
+                    side     TEXT    NOT NULL,
+                    price    INTEGER NOT NULL,
+                    quantity INTEGER NOT NULL
+                )
+                """);
+        statement.execute(
+                """
+                CREATE INDEX IF NOT EXISTS market_events_symbol_ts
+                ON market_events (symbol, ts)
+                """);
     }
 
     @Override

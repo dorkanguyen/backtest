@@ -15,8 +15,8 @@ import org.example.order.Side;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link JoinBestQuote} with a tolerance of 10 shares. The book: bid 9.00 x 300
- * (order 1), ask 9.02 x 300 (order 2).
+ * Tests for {@link JoinBestQuote} with a tolerance of 10 shares and no guard. The book: bid
+ * 9.00 x 300 (order 1), ask 9.02 x 300 (order 2).
  */
 class JoinBestQuoteTest {
 
@@ -25,7 +25,8 @@ class JoinBestQuoteTest {
 
     private final OrderBook book = new OrderBook("AAPL");
     private final ExecutionAlgo algo =
-            new JoinBestQuoteDefinition().create(Map.of("toleranceShares", 10.0));
+            new JoinBestQuoteDefinition()
+                    .create(Map.of("toleranceShares", 10.0, "guardShares", 0.0));
 
     JoinBestQuoteTest() {
         book.apply(event(EventType.ADD, 1, BookSide.BID, BID, 300));

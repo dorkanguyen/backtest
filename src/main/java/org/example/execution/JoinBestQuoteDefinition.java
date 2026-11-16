@@ -12,7 +12,18 @@ public class JoinBestQuoteDefinition implements ExecutionAlgoDefinition {
                     "toleranceShares",
                     "Changes smaller than this many shares do not replace the waiting order, so "
                             + "it keeps its place in the queue (closing is always allowed).",
-                    10, 1, 1_000, true));
+                    10, 1, 1_000, true),
+            new ParameterSpec(
+                    "guardShares",
+                    "The guard compares the impact price of this many shares with the mid price. "
+                            + "0 turns the guard off.",
+                    300, 0, 5_000, true),
+            new ParameterSpec(
+                    "guardCents",
+                    "If the impact price leans against the waiting order by more than this many "
+                            + "cents, the order is cancelled (or not placed): it would probably "
+                            + "be filled just before the price moves against it.",
+                    0.2, 0, 10, false));
 
     @Override
     public String id() {
@@ -38,6 +49,8 @@ public class JoinBestQuoteDefinition implements ExecutionAlgoDefinition {
 
     @Override
     public ExecutionAlgo create(Map<String, Double> values) {
-        return new JoinBestQuote(resolve(values).get("toleranceShares").intValue());
+        Map<String, Double> resolved = resolve(values);
+        return new JoinBestQuote(resolved.get("toleranceShares").intValue(),
+                resolved.get("guardShares").intValue(), resolved.get("guardCents"));
     }
 }
